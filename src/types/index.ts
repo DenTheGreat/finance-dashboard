@@ -1,4 +1,4 @@
-export type Currency = 'USD' | 'PLN';
+export type Currency = 'USD' | 'PLN' | 'UAH';
 
 export type TransactionType = 'income' | 'expense';
 
@@ -21,6 +21,7 @@ export type ExpenseCategory =
   | 'Shopping'
   | 'Education'
   | 'Personal'
+  | 'Transfers'
   | 'Subscriptions'
   | 'Debt Payment'
   | 'Other';
@@ -32,7 +33,7 @@ export const INCOME_CATEGORIES: IncomeCategory[] = [
 export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'Housing', 'Transportation', 'Food', 'Utilities', 'Healthcare',
   'Insurance', 'Entertainment', 'Shopping', 'Education', 'Personal',
-  'Subscriptions', 'Debt Payment', 'Other',
+  'Transfers', 'Subscriptions', 'Debt Payment', 'Other',
 ];
 
 export const NEEDS_CATEGORIES: ExpenseCategory[] = [
@@ -40,7 +41,7 @@ export const NEEDS_CATEGORIES: ExpenseCategory[] = [
 ];
 
 export const WANTS_CATEGORIES: ExpenseCategory[] = [
-  'Entertainment', 'Shopping', 'Education', 'Personal', 'Subscriptions',
+  'Entertainment', 'Shopping', 'Education', 'Personal', 'Transfers', 'Subscriptions',
 ];
 
 export interface Transaction {
@@ -79,8 +80,15 @@ export interface SavingsGoal {
 export interface UserSettings {
   primaryCurrency: Currency;
   exchangeRate: number; // USD to PLN rate
+  exchangeRates?: Record<string, number>; // rates from USD base (e.g., { PLN: 4.05, UAH: 41.5 })
   autoExchangeRate: boolean; // fetch live rate on load
   monthlyBudget?: number;
+  locale?: 'en' | 'uk' | 'ru';
+}
+
+export interface CategoryRule {
+  keyword: string;
+  category: string;
 }
 
 export interface AppData {
@@ -88,6 +96,7 @@ export interface AppData {
   debts: Debt[];
   savingsGoals: SavingsGoal[];
   settings: UserSettings;
+  categoryRules?: CategoryRule[];
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
@@ -102,6 +111,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Education: '#3b82f6',
   Personal: '#a855f7',
   Subscriptions: '#06b6d4',
+  Transfers: '#f472b6',
   'Debt Payment': '#dc2626',
   Other: '#64748b',
   Salary: '#10b981',

@@ -8,7 +8,7 @@ const DEFAULT_DATA: AppData = {
   debts: [],
   savingsGoals: [],
   settings: {
-    primaryCurrency: 'USD',
+    primaryCurrency: 'PLN',
     exchangeRate: 4.05, // approximate USD to PLN
     autoExchangeRate: true,
     monthlyBudget: undefined,
@@ -25,6 +25,7 @@ export function loadData(): AppData {
       debts: parsed.debts || [],
       savingsGoals: parsed.savingsGoals || [],
       settings: { ...DEFAULT_DATA.settings, ...parsed.settings },
+      categoryRules: parsed.categoryRules || [],
     };
   } catch {
     return { ...DEFAULT_DATA };
@@ -54,6 +55,12 @@ export function updateTransaction(data: AppData, tx: Transaction): AppData {
   return updated;
 }
 
+export function updateTransactionCategory(data: AppData, id: string, category: string): AppData {
+  const tx = data.transactions.find((t) => t.id === id);
+  if (!tx) return data;
+  return updateTransaction(data, { ...tx, category: category as Transaction['category'] });
+}
+
 export function deleteTransaction(data: AppData, id: string): AppData {
   const updated = {
     ...data,
@@ -61,6 +68,28 @@ export function deleteTransaction(data: AppData, id: string): AppData {
   };
   saveData(updated);
   return updated;
+}
+
+export function clearTransactions(data: AppData): AppData {
+  const updated = { ...data, transactions: [] };
+  saveData(updated);
+  return updated;
+}
+
+export function deduplicateTransactions(data: AppData): { data: AppData; removed: number } {
+  const seen = new Set<string>();
+  const unique: Transaction[] = [];
+  for (const tx of data.transactions) {
+    const key = `${tx.date}|${tx.amount}|${tx.type}|${tx.description}|${tx.currency}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(tx);
+    }
+  }
+  const removed = data.transactions.length - unique.length;
+  const updated = { ...data, transactions: unique };
+  saveData(updated);
+  return { data: updated, removed };
 }
 
 // Debts
@@ -125,6 +154,28 @@ export function updateSettings(data: AppData, settings: Partial<UserSettings>): 
     ...data,
     settings: { ...data.settings, ...settings },
   };
+  saveData(updated);
+  return updated;
+}
+
+// Category Rules
+export function addCategoryRule(data: AppData, keyword: string, category: string): AppData {
+  const rules = [...(data.categoryRules || [])];
+  const lower = keyword.toLowerCase().trim();
+  const existing = rules.findIndex(r => r.keyword === lower);
+  if (existing !== -1) {
+    rules[existing] = { keyword: lower, category };
+  } else {
+    rules.push({ keyword: lower, category });
+  }
+  const updated = { ...data, categoryRules: rules };
+  saveData(updated);
+  return updated;
+}
+
+export function deleteCategoryRule(data: AppData, keyword: string): AppData {
+  const rules = (data.categoryRules || []).filter(r => r.keyword !== keyword.toLowerCase().trim());
+  const updated = { ...data, categoryRules: rules };
   saveData(updated);
   return updated;
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, X, CreditCard, DollarSign } from 'lucide-react';
 import type { AppData, Debt } from '../types';
-import { formatCurrency } from '../utils/currency';
+import { useI18n } from '../i18n';
 
 interface DebtsProps {
   data: AppData;
@@ -31,6 +31,7 @@ const defaultForm: FormState = {
 };
 
 export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
+  const { t, formatCurrency } = useI18n();
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<FormState>(defaultForm);
   const [paymentInputs, setPaymentInputs] = useState<Record<string, string>>({});
@@ -88,13 +89,13 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Debts</h1>
+          <h1 className="text-2xl font-bold text-white">{t('debts.title')}</h1>
           <p className="text-gray-400 mt-1 text-sm">
-            Total remaining:{' '}
+            {t('debts.totalRemaining')}:{' '}
             <span className="text-red-400 font-semibold">
               {debts.length > 0
                 ? formatCurrency(totalDebt, data.settings.primaryCurrency)
-                : '—'}
+                : '\u2014'}
             </span>
           </p>
         </div>
@@ -103,7 +104,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
           className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Add Debt
+          {t('debts.addDebt')}
         </button>
       </div>
 
@@ -114,7 +115,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
             <DollarSign className="h-5 w-5 text-red-400" />
           </div>
           <div>
-            <p className="text-gray-400 text-xs uppercase tracking-wide">Total Debt</p>
+            <p className="text-gray-400 text-xs uppercase tracking-wide">{t('debts.totalDebt')}</p>
             <p className="text-white font-semibold text-lg mt-0.5">
               {formatCurrency(totalDebt, data.settings.primaryCurrency)}
             </p>
@@ -126,7 +127,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
             <CreditCard className="h-5 w-5 text-primary-400" />
           </div>
           <div>
-            <p className="text-gray-400 text-xs uppercase tracking-wide">Active Debts</p>
+            <p className="text-gray-400 text-xs uppercase tracking-wide">{t('debts.activeDebts')}</p>
             <p className="text-white font-semibold text-lg mt-0.5">{activeCount}</p>
           </div>
         </div>
@@ -136,9 +137,9 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
             <span className="text-yellow-400 font-bold text-sm">%</span>
           </div>
           <div>
-            <p className="text-gray-400 text-xs uppercase tracking-wide">Avg Interest Rate</p>
+            <p className="text-gray-400 text-xs uppercase tracking-wide">{t('debts.avgInterestRate')}</p>
             <p className="text-white font-semibold text-lg mt-0.5">
-              {debts.length > 0 ? `${avgInterestRate.toFixed(2)}%` : '—'}
+              {debts.length > 0 ? `${avgInterestRate.toFixed(2)}%` : '\u2014'}
             </p>
           </div>
         </div>
@@ -148,9 +149,9 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
       {debts.length === 0 ? (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-10 text-center">
           <CreditCard className="h-10 w-10 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-400">No debts added yet.</p>
+          <p className="text-gray-400">{t('debts.noDebts')}</p>
           <p className="text-gray-600 text-sm mt-1">
-            Click "Add Debt" to start tracking your debts.
+            {t('debts.clickAddDebt')}
           </p>
         </div>
       ) : (
@@ -176,13 +177,13 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                     </h3>
                     <p className="text-gray-400 text-sm mt-0.5">
                       {isFullyPaid ? (
-                        <span className="text-green-400 font-medium">Fully paid</span>
+                        <span className="text-green-400 font-medium">{t('debts.fullyPaid')}</span>
                       ) : (
                         <>
                           <span className="text-red-400 font-semibold">
                             {formatCurrency(remaining, debt.currency)}
                           </span>{' '}
-                          remaining
+                          {t('debts.remaining')}
                         </>
                       )}
                     </p>
@@ -190,7 +191,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                   <button
                     onClick={() => onDelete(debt.id)}
                     className="text-gray-600 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
-                    aria-label="Delete debt"
+                    aria-label={t('common.delete')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -205,7 +206,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                     />
                   </div>
                   <div className="flex justify-between text-xs text-gray-500">
-                    <span>{percentPaid.toFixed(1)}% paid</span>
+                    <span>{percentPaid.toFixed(1)}% {t('debts.paid')}</span>
                     <span>
                       {formatCurrency(debt.paidAmount, debt.currency)} /{' '}
                       {formatCurrency(debt.totalAmount, debt.currency)}
@@ -217,17 +218,17 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                 <div className="flex flex-wrap gap-3 text-xs text-gray-400">
                   {debt.interestRate !== undefined && (
                     <span className="bg-gray-800 px-2 py-1 rounded-md">
-                      {debt.interestRate}% interest
+                      {debt.interestRate}% {t('debts.interest')}
                     </span>
                   )}
                   {debt.dueDate && (
                     <span className="bg-gray-800 px-2 py-1 rounded-md">
-                      Due {debt.dueDate}
+                      {t('debts.due')} {debt.dueDate}
                     </span>
                   )}
                   {debt.minimumPayment !== undefined && (
                     <span className="bg-gray-800 px-2 py-1 rounded-md">
-                      Min {formatCurrency(debt.minimumPayment, debt.currency)}/mo
+                      {t('debts.minPayment')} {formatCurrency(debt.minimumPayment, debt.currency)}{t('debts.perMonth')}
                     </span>
                   )}
                 </div>
@@ -241,7 +242,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                           type="number"
                           min="0"
                           step="0.01"
-                          placeholder="Amount"
+                          placeholder={t('form.amount')}
                           value={paymentInputs[debt.id] ?? ''}
                           onChange={e =>
                             setPaymentInputs(prev => ({
@@ -256,7 +257,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                           onClick={() => handleMakePayment(debt)}
                           className="bg-primary-600 hover:bg-primary-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
                         >
-                          Apply
+                          {t('common.apply')}
                         </button>
                         <button
                           onClick={() => {
@@ -273,7 +274,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                         onClick={() => setActivePayment(debt.id)}
                         className="text-sm text-primary-400 hover:text-primary-300 font-medium transition-colors"
                       >
-                        + Make Payment
+                        {t('debts.makePayment')}
                       </button>
                     )}
                   </div>
@@ -289,7 +290,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-white">Add Debt</h2>
+              <h2 className="text-lg font-semibold text-white">{t('debts.addDebt')}</h2>
               <button
                 onClick={() => {
                   setShowModal(false);
@@ -304,7 +305,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
             <div className="space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Name</label>
+                <label className="block text-sm text-gray-400 mb-1">{t('debts.name')}</label>
                 <input
                   type="text"
                   name="name"
@@ -318,7 +319,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
               {/* Total Amount + Currency row */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Total Amount</label>
+                  <label className="block text-sm text-gray-400 mb-1">{t('debts.totalAmount')}</label>
                   <input
                     type="number"
                     name="totalAmount"
@@ -331,7 +332,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Currency</label>
+                  <label className="block text-sm text-gray-400 mb-1">{t('form.currency')}</label>
                   <select
                     name="currency"
                     value={form.currency}
@@ -346,7 +347,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
 
               {/* Already Paid */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Already Paid</label>
+                <label className="block text-sm text-gray-400 mb-1">{t('debts.alreadyPaid')}</label>
                 <input
                   type="number"
                   name="paidAmount"
@@ -362,7 +363,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
               {/* Interest Rate + Minimum Payment row */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Interest Rate (%)</label>
+                  <label className="block text-sm text-gray-400 mb-1">{t('debts.interestRate')}</label>
                   <input
                     type="number"
                     name="interestRate"
@@ -375,7 +376,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Min Payment</label>
+                  <label className="block text-sm text-gray-400 mb-1">{t('debts.minimumPayment')}</label>
                   <input
                     type="number"
                     name="minimumPayment"
@@ -391,7 +392,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
 
               {/* Due Date */}
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Due Date</label>
+                <label className="block text-sm text-gray-400 mb-1">{t('debts.dueDate')}</label>
                 <input
                   type="date"
                   name="dueDate"
@@ -411,14 +412,14 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                 }}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleSave}
                 disabled={!form.name.trim() || !form.totalAmount}
                 className="px-4 py-2 rounded-lg text-sm font-medium bg-primary-600 hover:bg-primary-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Save
+                {t('debts.save')}
               </button>
             </div>
           </div>

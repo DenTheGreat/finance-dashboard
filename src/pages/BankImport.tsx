@@ -7,6 +7,8 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowLeft,
+  Trash2,
+  Filter,
 } from 'lucide-react';
 import type { AppData, Transaction } from '../types';
 import {
@@ -14,17 +16,21 @@ import {
   INCOME_CATEGORIES,
   CATEGORY_COLORS,
 } from '../types';
-import { formatCurrency } from '../utils/currency';
 import {
   parseCSV,
   type ParseResult,
   type ParsedBankTransaction,
   type ColumnMapping,
 } from '../utils/pkoImport';
+import { saveCustomRule } from '../utils/customRules';
+import { useI18n } from '../i18n';
 
 interface BankImportProps {
   data: AppData;
   onAdd: (tx: Omit<Transaction, 'id'>) => void;
+  onClear: () => void;
+  onDeduplicate: () => number;
+  onAddRule: (keyword: string, category: string) => void;
 }
 
 type Step = 1 | 2 | 3;
@@ -35,7 +41,8 @@ const INPUT_CLASS =
 const SELECT_CLASS =
   'bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-xs';
 
-export default function BankImport({ data, onAdd }: BankImportProps) {
+export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddRule }: BankImportProps) {
+  const { t, tc, formatCurrency } = useI18n();
   const [step, setStep] = useState<Step>(1);
   const [dragging, setDragging] = useState(false);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
@@ -64,48 +71,69 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
 
   // ---- File reading helpers ----
 
+  function handleParseResult(result: ParseResult) {
+    if (result.transactions.length === 0 && result.headers.length === 0) {
+      setParseError(t('import.emptyFile'));
+      return;
+    }
+    setParseResult(result);
+
+    // Initialise mapping UI from detected mapping
+    setMappingDate(result.mapping.date);
+    setMappingAmount(result.mapping.amount);
+    setMappingDesc(result.mapping.description);
+    setMappingCurrency(result.mapping.currency);
+    setMappingCounterparty(result.mapping.counterparty);
+
+    // Initialise category overrides and selection
+    const initialCategories: Record<number, string> = {};
+    const initialSelected = new Set<number>();
+    result.transactions.forEach((tx, i) => {
+      initialCategories[i] = tx.suggestedCategory;
+      initialSelected.add(i);
+    });
+    setCategoryOverrides(initialCategories);
+    setSelected(initialSelected);
+
+    // Skip column mapping step if auto-mapped
+    setStep(result.autoMapped ? 3 : 2);
+  }
+
   function processFile(file: File) {
     if (!file.name.toLowerCase().endsWith('.csv')) {
-      setParseError('Please select a .csv file.');
+      setParseError(t('import.selectCsvFile'));
       return;
     }
     setParseError(null);
     setFileName(file.name);
+
+    // Try UTF-8 first (Monobank uses UTF-8)
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result;
       if (typeof text !== 'string') {
-        setParseError('Could not read file.');
+        setParseError(t('import.couldNotRead'));
         return;
       }
-      const result = parseCSV(text);
-      if (result.transactions.length === 0 && result.headers.length === 0) {
-        setParseError('The file appears to be empty or unrecognised.');
+      const result = parseCSV(text, data.categoryRules);
+      if (result.detectedBank !== 'unknown' && result.transactions.length > 0) {
+        handleParseResult(result);
         return;
       }
-      setParseResult(result);
-
-      // Initialise mapping UI from detected mapping
-      setMappingDate(result.mapping.date);
-      setMappingAmount(result.mapping.amount);
-      setMappingDesc(result.mapping.description);
-      setMappingCurrency(result.mapping.currency);
-      setMappingCounterparty(result.mapping.counterparty);
-
-      // Initialise category overrides and selection
-      const initialCategories: Record<number, string> = {};
-      const initialSelected = new Set<number>();
-      result.transactions.forEach((tx, i) => {
-        initialCategories[i] = tx.suggestedCategory;
-        initialSelected.add(i);
-      });
-      setCategoryOverrides(initialCategories);
-      setSelected(initialSelected);
-
-      // Skip column mapping step if auto-mapped
-      setStep(result.autoMapped ? 3 : 2);
+      // Try windows-1250 (PKO) / windows-1251 (PrivatBank) as fallback
+      const reader2 = new FileReader();
+      reader2.onload = (e2) => {
+        const text2 = e2.target?.result;
+        if (typeof text2 !== 'string') {
+          setParseError(t('import.couldNotRead'));
+          return;
+        }
+        const result2 = parseCSV(text2, data.categoryRules);
+        handleParseResult(result2);
+      };
+      reader2.readAsText(file, 'windows-1250');
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
   }
 
   // ---- Drag & drop handlers ----
@@ -143,9 +171,6 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
       currency: mappingCurrency,
       counterparty: mappingCounterparty,
     };
-    // Re-parse with custom mapping by rebuilding from raw rows
-    // We reconstruct a CSV string using the original raw fields and re-invoke parseCSV
-    // but that would strip the headers. Instead, we do an inline re-map.
     const remapped = remapTransactions(parseResult, customMapping);
     const initialCategories: Record<number, string> = {};
     const initialSelected = new Set<number>();
@@ -168,6 +193,16 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
       if (!selected.has(i)) return;
       const category = (categoryOverrides[i] ?? tx.suggestedCategory) as Transaction['category'];
       const type = tx.suggestedType;
+
+      // Learn from category overrides: save rule to AppData (shared) and localStorage (local)
+      if (categoryOverrides[i] && categoryOverrides[i] !== tx.suggestedCategory) {
+        const keyword = extractKeyword(tx.description);
+        if (keyword) {
+          onAddRule(keyword, categoryOverrides[i]);
+          saveCustomRule(keyword, categoryOverrides[i]);
+        }
+      }
+
       const newTx: Omit<Transaction, 'id'> = {
         type,
         amount: tx.amount,
@@ -178,7 +213,7 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
       };
 
       if (tx.currency === 'PLN') {
-        newTx.exchangeRateAtTime = data.settings.exchangeRate;
+        newTx.exchangeRateAtTime = tx.extractedExchangeRate ?? data.settings.exchangeRate;
       }
 
       onAdd(newTx);
@@ -242,7 +277,7 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
       {/* Header */}
       <div className="flex items-center gap-3">
         <FileSpreadsheet className="h-7 w-7 text-primary-400" />
-        <h1 className="text-2xl font-bold text-white">Bank Import</h1>
+        <h1 className="text-2xl font-bold text-white">{t('import.title')}</h1>
       </div>
 
       {/* Success banner */}
@@ -251,13 +286,13 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
           <Check className="h-5 w-5 text-green-400 mt-0.5 shrink-0" />
           <div>
             <p className="text-green-300 font-semibold">
-              Successfully imported {importedCount} transaction{importedCount !== 1 ? 's' : ''}!
+              {t('import.successImported', { count: String(importedCount), plural: importedCount !== 1 ? 's' : '' })}
             </p>
             <a
               href="/transactions"
               className="inline-flex items-center gap-1 mt-1 text-sm text-green-400 hover:text-green-300 underline underline-offset-2"
             >
-              View transactions
+              {t('import.viewTransactions')}
               <ArrowRight className="h-3.5 w-3.5" />
             </a>
           </div>
@@ -286,10 +321,10 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
             />
             <div className="text-center">
               <p className="text-gray-200 font-medium text-base">
-                Drop your bank CSV file here or click to browse
+                {t('import.dropFile')}
               </p>
               <p className="text-gray-500 text-sm mt-1">
-                Supports PKO BP, Santander, and generic CSV formats
+                {t('import.supports')}
               </p>
             </div>
             <input
@@ -307,6 +342,43 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
               {parseError}
             </div>
           )}
+
+          {data.transactions.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-800 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <p className="text-sm text-gray-400">
+                  {t('import.transactionsStored', { count: String(data.transactions.length), plural: data.transactions.length !== 1 ? 's' : '' })}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const removed = onDeduplicate();
+                      if (removed > 0) {
+                        alert(t('import.removedDuplicates', { count: String(removed), plural: removed !== 1 ? 's' : '' }));
+                      } else {
+                        alert(t('import.noDuplicates'));
+                      }
+                    }}
+                    className="flex items-center gap-2 bg-yellow-900/40 hover:bg-yellow-900/60 text-yellow-400 hover:text-yellow-300 font-medium px-4 py-2 rounded-lg transition-colors text-sm border border-yellow-800"
+                  >
+                    <Filter className="h-4 w-4" />
+                    {t('import.deduplicate')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(t('import.clearConfirm', { count: String(data.transactions.length) }))) {
+                        onClear();
+                      }
+                    }}
+                    className="flex items-center gap-2 bg-red-900/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 font-medium px-4 py-2 rounded-lg transition-colors text-sm border border-red-800"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {t('import.clearAll')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -315,9 +387,9 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
         <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-white">Column Mapping</h2>
+              <h2 className="text-lg font-semibold text-white">{t('import.columnMapping')}</h2>
               <p className="text-sm text-gray-400 mt-0.5">
-                We could not auto-detect the format. Map your CSV columns below.
+                {t('import.couldNotAutoDetect')}
               </p>
             </div>
             <button
@@ -337,46 +409,48 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
           {/* Mapping selects */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <MappingSelect
-              label="Date column"
+              label={t('import.dateColumn')}
               value={mappingDate}
               onChange={setMappingDate}
               headers={parseResult.headers}
               required
             />
             <MappingSelect
-              label="Amount column"
+              label={t('import.amountColumn')}
               value={mappingAmount}
               onChange={setMappingAmount}
               headers={parseResult.headers}
               required
             />
             <MappingSelect
-              label="Description column"
+              label={t('import.descriptionColumn')}
               value={mappingDesc}
               onChange={setMappingDesc}
               headers={parseResult.headers}
               required
             />
             <MappingSelect
-              label="Currency column"
+              label={t('import.currencyColumn')}
               value={mappingCurrency}
               onChange={setMappingCurrency}
               headers={parseResult.headers}
               optional
+              optionalLabel={t('import.optional')}
             />
             <MappingSelect
-              label="Counterparty column"
+              label={t('import.counterpartyColumn')}
               value={mappingCounterparty}
               onChange={setMappingCounterparty}
               headers={parseResult.headers}
               optional
+              optionalLabel={t('import.optional')}
             />
           </div>
 
           {/* Preview */}
           <div>
             <p className="text-sm font-medium text-gray-400 mb-2">
-              Preview (first 3 rows)
+              {t('import.previewRows')}
             </p>
             <div className="overflow-x-auto rounded-lg border border-gray-800">
               <table className="w-full text-xs text-gray-300">
@@ -410,7 +484,7 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
               onClick={handleApplyMapping}
               className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-medium px-5 py-2.5 rounded-lg transition-colors"
             >
-              Apply Mapping
+              {t('import.applyMapping')}
               <ArrowRight className="h-4 w-4" />
             </button>
             <button
@@ -418,7 +492,7 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
               className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium px-5 py-2.5 rounded-lg transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              Cancel
+              {t('import.cancel')}
             </button>
           </div>
         </section>
@@ -430,7 +504,7 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
           {/* Header row */}
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h2 className="text-lg font-semibold text-white">Review & Import</h2>
+              <h2 className="text-lg font-semibold text-white">{t('import.reviewImport')}</h2>
               <p className="text-sm text-gray-400 mt-0.5">{fileName}</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -438,12 +512,16 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
               {parseResult.autoMapped ? (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-green-900/40 text-green-400 border border-green-800">
                   <Check className="h-3 w-3" />
-                  PKO format detected
+                  {parseResult.detectedBank === 'Monobank'
+                    ? t('import.monoDetected')
+                    : parseResult.detectedBank === 'PrivatBank'
+                    ? t('import.privatDetected')
+                    : t('import.pkoDetected')}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-900/40 text-blue-400 border border-blue-800">
                   <FileSpreadsheet className="h-3 w-3" />
-                  Custom mapping
+                  {t('import.customMapping')}
                 </span>
               )}
               <button
@@ -455,24 +533,31 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
             </div>
           </div>
 
+          {/* Currency hint */}
+          {parseResult.detectedCurrency && parseResult.detectedCurrency !== data.settings.primaryCurrency && (
+            <div className="bg-yellow-900/30 border border-yellow-800 rounded-lg px-4 py-3 text-sm text-yellow-300">
+              {t('import.csvCurrencyHint', { csvCurrency: parseResult.detectedCurrency, primaryCurrency: data.settings.primaryCurrency })}
+            </div>
+          )}
+
           {/* Summary bar */}
           <div className="bg-gray-800 rounded-lg p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="text-gray-500 text-xs">Transactions found</p>
+              <p className="text-gray-500 text-xs">{t('import.transactionsFound')}</p>
               <p className="text-gray-100 font-semibold mt-0.5">{transactions.length}</p>
             </div>
             <div>
-              <p className="text-gray-500 text-xs">Selected</p>
+              <p className="text-gray-500 text-xs">{t('import.selectedLabel')}</p>
               <p className="text-gray-100 font-semibold mt-0.5">{selected.size}</p>
             </div>
             <div>
-              <p className="text-gray-500 text-xs">Income</p>
+              <p className="text-gray-500 text-xs">{t('import.incomeLabel')}</p>
               <p className="text-green-400 font-semibold mt-0.5">
                 +{formatCurrency(totalIncome, summaryCurrency)}
               </p>
             </div>
             <div>
-              <p className="text-gray-500 text-xs">Expenses</p>
+              <p className="text-gray-500 text-xs">{t('import.expensesLabel')}</p>
               <p className="text-red-400 font-semibold mt-0.5">
                 -{formatCurrency(totalExpenses, summaryCurrency)}
               </p>
@@ -485,17 +570,17 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
               onClick={selectAll}
               className="text-xs text-primary-400 hover:text-primary-300 underline underline-offset-2"
             >
-              Select All
+              {t('import.selectAll')}
             </button>
             <span className="text-gray-700 text-xs">|</span>
             <button
               onClick={deselectAll}
               className="text-xs text-gray-400 hover:text-gray-200 underline underline-offset-2"
             >
-              Deselect All
+              {t('import.deselectAll')}
             </button>
             <span className="text-gray-600 text-xs ml-auto">
-              {selected.size} of {transactions.length} selected
+              {selected.size} {t('import.ofSelected')} {transactions.length}
             </span>
           </div>
 
@@ -504,7 +589,7 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
             {transactions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                 <AlertCircle className="h-8 w-8 mb-2 opacity-40" />
-                <p className="text-sm">No transactions could be parsed.</p>
+                <p className="text-sm">{t('import.noTransactionsParsed')}</p>
               </div>
             ) : (
               transactions.map((tx, i) => {
@@ -539,7 +624,7 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
                     {/* Description */}
                     <span className="text-sm text-gray-200 flex-1 min-w-0 truncate" title={tx.description}>
                       {tx.description || (
-                        <span className="text-gray-500 italic">No description</span>
+                        <span className="text-gray-500 italic">{t('transactions.noDescription')}</span>
                       )}
                     </span>
 
@@ -557,7 +642,7 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
                     >
                       {allCategories.map((c) => (
                         <option key={c} value={c}>
-                          {c}
+                          {tc(c)}
                         </option>
                       ))}
                     </select>
@@ -570,7 +655,7 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
                           : 'bg-red-900/40 text-red-400'
                       }`}
                     >
-                      {isIncome ? 'income' : 'expense'}
+                      {t(`transactions.${isIncome ? 'income' : 'expense'}`)}
                     </span>
 
                     {/* Amount */}
@@ -601,20 +686,34 @@ export default function BankImport({ data, onAdd }: BankImportProps) {
               className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium px-5 py-2.5 rounded-lg transition-colors"
             >
               <Check className="h-4 w-4" />
-              Import Selected ({selected.size})
+              {t('import.importSelected')} ({selected.size})
             </button>
             <button
               onClick={handleCancel}
               className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium px-5 py-2.5 rounded-lg transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
-              Cancel
+              {t('import.cancel')}
             </button>
           </div>
         </section>
       )}
     </div>
   );
+}
+
+// ---- Helper: extract a short keyword from a transaction description ----
+
+function extractKeyword(description: string): string {
+  if (!description) return '';
+  // Take the first 2-3 meaningful words (skip very short tokens like "-" or "-")
+  const words = description
+    .toLowerCase()
+    .replace(/[\u2013\u2014]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+    .slice(0, 2);
+  return words.join(' ').trim();
 }
 
 // ---- Sub-components ----
@@ -624,10 +723,11 @@ interface StepIndicatorProps {
 }
 
 function StepIndicator({ current }: StepIndicatorProps) {
+  const { t } = useI18n();
   const steps = [
-    { n: 1 as Step, label: 'Upload' },
-    { n: 2 as Step, label: 'Map Columns' },
-    { n: 3 as Step, label: 'Review & Import' },
+    { n: 1 as Step, label: t('import.upload') },
+    { n: 2 as Step, label: t('import.mapColumns') },
+    { n: 3 as Step, label: t('import.reviewImport') },
   ];
   return (
     <div className="flex items-center gap-0">
@@ -677,6 +777,7 @@ interface MappingSelectProps {
   headers: string[];
   required?: boolean;
   optional?: boolean;
+  optionalLabel?: string;
 }
 
 function MappingSelect({
@@ -685,12 +786,13 @@ function MappingSelect({
   onChange,
   headers,
   optional,
+  optionalLabel,
 }: MappingSelectProps) {
   return (
     <div className="space-y-1.5">
       <label className="block text-sm font-medium text-gray-300">
         {label}
-        {optional && <span className="text-gray-600 font-normal ml-1">(optional)</span>}
+        {optional && <span className="text-gray-600 font-normal ml-1">({optionalLabel || 'optional'})</span>}
       </label>
       <select
         value={value}
@@ -715,7 +817,6 @@ function remapTransactions(
   mapping: ColumnMapping,
 ): ParsedBankTransaction[] {
   const { transactions } = result;
-  // We re-derive fields from raw rows
   return transactions
     .map((tx) => {
       const raw = tx.raw;
@@ -742,12 +843,14 @@ function remapTransactions(
         mapping.currency >= 0
           ? (raw[mapping.currency] ?? '').trim().toUpperCase()
           : '';
-      const currency =
+      const currency: import('../types').Currency =
         rawCurrency === 'PLN'
           ? 'PLN'
           : rawCurrency === 'USD'
           ? 'USD'
-          : ('PLN' as const);
+          : rawCurrency === 'UAH'
+          ? 'UAH'
+          : 'PLN';
 
       const isIncome = amount > 0;
       const suggestedCategory = detectCategoryFallback(fullDesc);
@@ -776,11 +879,10 @@ function remapTransactions(
 function detectCategoryFallback(
   description: string,
 ): import('../types').ExpenseCategory | import('../types').IncomeCategory {
-  // Simple keyword check matching pkoImport logic
   const lower = description.toLowerCase();
   if (lower.includes('wynagrodzenie') || lower.includes('salary') || lower.includes('pensja'))
     return 'Salary';
-  if (lower.includes('biedronka') || lower.includes('lidl') || lower.includes('żabka') || lower.includes('restaurant') || lower.includes('mcdonalds') || lower.includes('kfc'))
+  if (lower.includes('biedronka') || lower.includes('lidl') || lower.includes('\u017Cabka') || lower.includes('restaurant') || lower.includes('mcdonalds') || lower.includes('kfc'))
     return 'Food';
   if (lower.includes('czynsz') || lower.includes('wynajem') || lower.includes('rent') || lower.includes('hipoteka'))
     return 'Housing';

@@ -34,13 +34,13 @@ describe('fetchLiveRate', () => {
     expect(rate).toBe(4.05);
     expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'finance-dashboard-live-rate',
+      'finance-dashboard-live-rates',
       expect.stringContaining('4.05'),
     );
   });
 
   it('returns cached rate within TTL', async () => {
-    const cached = JSON.stringify({ rate: 4.10, timestamp: Date.now() });
+    const cached = JSON.stringify({ rates: { PLN: 4.10 }, timestamp: Date.now() });
     localStorageMock.getItem.mockReturnValueOnce(cached);
 
     const rate = await fetchLiveRate();
@@ -50,7 +50,7 @@ describe('fetchLiveRate', () => {
 
   it('fetches new rate when cache is expired', async () => {
     const expired = JSON.stringify({
-      rate: 3.90,
+      rates: { PLN: 3.90 },
       timestamp: Date.now() - 2 * 60 * 60 * 1000, // 2 hours ago
     });
     localStorageMock.getItem.mockReturnValueOnce(expired);

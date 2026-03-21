@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
 import { Settings as SettingsIcon, Download, Upload, Info, RefreshCw, Database } from 'lucide-react';
-import { fetchLiveRate } from '../utils/exchangeRate';
+import { fetchAllRates } from '../utils/exchangeRate';
 import type { AppData, UserSettings } from '../types';
+import { useI18n } from '../i18n';
+import type { Locale } from '../i18n';
 
 interface SettingsProps {
   data: AppData;
@@ -21,10 +23,11 @@ export default function Settings({
   onImport,
   onLoadSeed,
 }: SettingsProps) {
+  const { t, locale, setLocale } = useI18n();
   const { settings } = data;
 
   // Local form state initialised from current settings
-  const [primaryCurrency, setPrimaryCurrency] = useState<'USD' | 'PLN'>(
+  const [primaryCurrency, setPrimaryCurrency] = useState<import('../types').Currency>(
     settings.primaryCurrency,
   );
   const [exchangeRate, setExchangeRate] = useState<string>(
@@ -43,23 +46,38 @@ export default function Settings({
 
   async function handleRefreshRate() {
     setFetchingRate(true);
-    const rate = await fetchLiveRate();
-    if (rate) {
-      setExchangeRate(String(rate));
+    const rates = await fetchAllRates();
+    if (rates) {
+      const plnRate = rates['PLN'];
+      if (typeof plnRate === 'number' && plnRate > 0) {
+        setExchangeRate(String(plnRate));
+      }
+      onUpdateSettings({ exchangeRates: rates });
     }
     setFetchingRate(false);
   }
+
+  // Compute cross rates for display
+  const allRates = settings.exchangeRates;
+  const usdToPlnDisplay = allRates?.['PLN'] ?? settings.exchangeRate;
+  const usdToUahDisplay = allRates?.['UAH'] ?? null;
+  const plnToUahDisplay = usdToUahDisplay && usdToPlnDisplay ? (usdToUahDisplay / usdToPlnDisplay) : null;
 
   // --- Currency settings save ---
   function handleSaveSettings() {
     const rate = parseFloat(exchangeRate);
     const budget = monthlyBudget !== '' ? parseFloat(monthlyBudget) : undefined;
-    onUpdateSettings({
+    const updates: Partial<import('../types').UserSettings> = {
       primaryCurrency,
       exchangeRate: isNaN(rate) ? 4.05 : rate,
       autoExchangeRate: autoRate,
       monthlyBudget: budget !== undefined && isNaN(budget) ? undefined : budget,
-    });
+    };
+    // Preserve existing exchangeRates if available
+    if (settings.exchangeRates) {
+      updates.exchangeRates = settings.exchangeRates;
+    }
+    onUpdateSettings(updates);
   }
 
   // --- Export ---
@@ -77,7 +95,7 @@ export default function Settings({
     reader.onload = (event) => {
       const text = event.target?.result;
       if (typeof text !== 'string') {
-        setImportError('Could not read file.');
+        setImportError(t('import.couldNotRead'));
         return;
       }
       try {
@@ -85,7 +103,7 @@ export default function Settings({
         onImport(text);
         setImportSuccess(true);
       } catch {
-        setImportError('Invalid JSON file. Please select a valid export file.');
+        setImportError(t('settings.importError'));
       }
     };
     reader.readAsText(file);
@@ -98,20 +116,48 @@ export default function Settings({
       {/* Header */}
       <div className="flex items-center gap-3">
         <SettingsIcon className="h-7 w-7 text-primary-400" />
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
+        <h1 className="text-2xl font-bold text-white">{t('settings.title')}</h1>
       </div>
+
+      {/* Language Settings */}
+      <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+        <h2 className="text-lg font-semibold text-white">{t('settings.language')}</h2>
+        <p className="text-sm text-gray-400">{t('settings.languageDescription')}</p>
+        <div className="flex gap-3">
+          {([
+            { code: 'en' as Locale, label: 'English' },
+            { code: 'uk' as Locale, label: '\u0423\u043A\u0440\u0430\u0457\u043D\u0441\u044C\u043A\u0430' },
+            { code: 'ru' as Locale, label: '\u0420\u0443\u0441\u0441\u043A\u0438\u0439' },
+          ]).map((l) => (
+            <label
+              key={l.code}
+              className="flex items-center gap-2 cursor-pointer select-none"
+            >
+              <input
+                type="radio"
+                name="locale"
+                value={l.code}
+                checked={locale === l.code}
+                onChange={() => setLocale(l.code)}
+                className="accent-primary-500 h-4 w-4"
+              />
+              <span className="text-gray-200 text-sm font-medium">{l.label}</span>
+            </label>
+          ))}
+        </div>
+      </section>
 
       {/* Currency Settings */}
       <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
-        <h2 className="text-lg font-semibold text-white">Currency Settings</h2>
+        <h2 className="text-lg font-semibold text-white">{t('settings.currencySettings')}</h2>
 
         {/* Primary Currency */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-300">
-            Primary Currency
+            {t('settings.primaryCurrency')}
           </label>
           <div className="flex gap-4">
-            {(['USD', 'PLN'] as const).map((c) => (
+            {(['USD', 'PLN', 'UAH'] as const).map((c) => (
               <label
                 key={c}
                 className="flex items-center gap-2 cursor-pointer select-none"
@@ -133,8 +179,8 @@ export default function Settings({
         {/* Exchange Rate */}
         <div className="space-y-3">
           <label className="block text-sm font-medium text-gray-300">
-            Exchange Rate{' '}
-            <span className="text-gray-500 font-normal">(USD to PLN)</span>
+            {t('settings.exchangeRate')}{' '}
+            <span className="text-gray-500 font-normal">({t('settings.usdToPlnRate')})</span>
           </label>
 
           {/* Auto/Manual toggle */}
@@ -155,7 +201,7 @@ export default function Settings({
               />
             </button>
             <span className="text-sm text-gray-300">
-              Auto-fetch live rate {autoRate && <span className="text-accent-400 text-xs ml-1">Active</span>}
+              {t('settings.autoFetchRate')} {autoRate && <span className="text-accent-400 text-xs ml-1">{t('settings.active')}</span>}
             </span>
           </label>
 
@@ -176,16 +222,41 @@ export default function Settings({
               onClick={handleRefreshRate}
               disabled={fetchingRate}
               className="shrink-0 inline-flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-100 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
-              title="Fetch latest rate"
+              title={t('settings.refresh')}
             >
               <RefreshCw className={`h-4 w-4 ${fetchingRate ? 'animate-spin' : ''}`} />
-              Refresh
+              {t('settings.refresh')}
             </button>
           </div>
           {autoRate && (
             <p className="text-xs text-gray-500">
-              Rate updates automatically on app load (cached for 1 hour). You can still refresh manually or disable auto-fetch to set your own rate.
+              {t('settings.rateAutoUpdates')}
             </p>
+          )}
+
+          {/* Multi-currency rates display */}
+          {allRates && (
+            <div className="mt-3 bg-gray-800 rounded-lg p-3 space-y-1.5">
+              <p className="text-xs font-medium text-gray-400 mb-2">{t('settings.exchangeRates')}</p>
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-500 text-xs">{t('settings.usdToPlnRate')}</span>
+                  <p className="text-gray-100 font-semibold">{usdToPlnDisplay.toFixed(2)}</p>
+                </div>
+                {usdToUahDisplay !== null && (
+                  <div>
+                    <span className="text-gray-500 text-xs">{t('settings.usdToUah')}</span>
+                    <p className="text-gray-100 font-semibold">{usdToUahDisplay.toFixed(2)}</p>
+                  </div>
+                )}
+                {plnToUahDisplay !== null && (
+                  <div>
+                    <span className="text-gray-500 text-xs">{t('settings.plnToUah')}</span>
+                    <p className="text-gray-100 font-semibold">{plnToUahDisplay.toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
@@ -195,8 +266,8 @@ export default function Settings({
             htmlFor="monthlyBudget"
             className="block text-sm font-medium text-gray-300"
           >
-            Monthly Budget{' '}
-            <span className="text-gray-500 font-normal">(optional)</span>
+            {t('settings.monthlyBudget')}{' '}
+            <span className="text-gray-500 font-normal">({t('common.optional')})</span>
           </label>
           <input
             id="monthlyBudget"
@@ -216,25 +287,25 @@ export default function Settings({
           className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-medium px-5 py-2.5 rounded-lg transition-colors"
         >
           <SettingsIcon className="h-4 w-4" />
-          Save Settings
+          {t('settings.saveSettings')}
         </button>
       </section>
 
       {/* Data Management */}
       <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
-        <h2 className="text-lg font-semibold text-white">Data Management</h2>
+        <h2 className="text-lg font-semibold text-white">{t('settings.dataManagement')}</h2>
 
         {/* Export */}
         <div className="space-y-2">
           <p className="text-sm text-gray-400">
-            Download all your data as a JSON file for backup or migration.
+            {t('settings.exportDescription')}
           </p>
           <button
             onClick={handleExport}
             className="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-100 font-medium px-5 py-2.5 rounded-lg transition-colors"
           >
             <Download className="h-4 w-4" />
-            Export Data
+            {t('settings.exportData')}
           </button>
         </div>
 
@@ -244,11 +315,10 @@ export default function Settings({
         <div className="space-y-3">
           <div>
             <p className="text-sm text-gray-400">
-              Import a previously exported JSON file to restore your data.
+              {t('settings.importDescription')}
             </p>
             <p className="mt-1 text-sm text-warning-400 font-medium">
-              Warning: importing will overwrite all existing data and cannot be
-              undone.
+              {t('settings.importWarning')}
             </p>
           </div>
 
@@ -271,7 +341,7 @@ export default function Settings({
               className="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-100 font-medium px-5 py-2.5 rounded-lg transition-colors"
             >
               <Upload className="h-4 w-4" />
-              Import from File
+              {t('settings.importFromFile')}
             </button>
           </div>
 
@@ -280,7 +350,7 @@ export default function Settings({
           )}
           {importSuccess && (
             <p className="text-sm text-accent-400">
-              Data imported successfully.
+              {t('settings.importSuccess')}
             </p>
           )}
         </div>
@@ -288,19 +358,19 @@ export default function Settings({
 
       {/* Demo Data */}
       <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-3">
-        <h2 className="text-lg font-semibold text-white">Demo Data</h2>
+        <h2 className="text-lg font-semibold text-white">{t('settings.demoData')}</h2>
         <p className="text-sm text-gray-400">
-          Load sample transactions, debts, and savings goals to explore the dashboard.
+          {t('settings.demoDescription')}
         </p>
         <p className="text-sm text-warning-400 font-medium">
-          Warning: this will replace all existing data.
+          {t('settings.demoWarning')}
         </p>
         <button
           onClick={onLoadSeed}
           className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-medium px-5 py-2.5 rounded-lg transition-colors"
         >
           <Database className="h-4 w-4" />
-          Load Demo Data
+          {t('settings.loadDemoData')}
         </button>
       </section>
 
@@ -308,26 +378,26 @@ export default function Settings({
       <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-3">
         <div className="flex items-center gap-2">
           <Info className="h-5 w-5 text-primary-400" />
-          <h2 className="text-lg font-semibold text-white">About</h2>
+          <h2 className="text-lg font-semibold text-white">{t('settings.about')}</h2>
         </div>
 
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <dt className="text-gray-400">App</dt>
-            <dd className="text-gray-100 font-medium">Finance Dashboard</dd>
+            <dt className="text-gray-400">{t('settings.app')}</dt>
+            <dd className="text-gray-100 font-medium">{t('layout.appTitle')}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-400">Version</dt>
+            <dt className="text-gray-400">{t('settings.version')}</dt>
             <dd className="text-gray-100 font-medium">1.0.0</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-400">Storage</dt>
-            <dd className="text-gray-100">Data stored locally in your browser</dd>
+            <dt className="text-gray-400">{t('settings.storage')}</dt>
+            <dd className="text-gray-100">{t('settings.storageDescription')}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-400">Roadmap</dt>
+            <dt className="text-gray-400">{t('settings.roadmap')}</dt>
             <dd className="text-gray-500 italic">
-              Future: cloud sync &amp; banking integration
+              {t('settings.roadmapDescription')}
             </dd>
           </div>
         </dl>

@@ -62,7 +62,7 @@ describe('loadData', () => {
     expect(data.transactions).toEqual([]);
     expect(data.debts).toEqual([]);
     expect(data.savingsGoals).toEqual([]);
-    expect(data.settings.primaryCurrency).toBe('USD');
+    expect(data.settings.primaryCurrency).toBe('PLN');
     expect(data.settings.exchangeRate).toBe(4.05);
   });
 
@@ -87,7 +87,7 @@ describe('loadData', () => {
     localStorageMock.getItem.mockReturnValueOnce('not-valid-json{{{');
     const data = loadData();
     expect(data.transactions).toEqual([]);
-    expect(data.settings.primaryCurrency).toBe('USD');
+    expect(data.settings.primaryCurrency).toBe('PLN');
   });
 
   it('fills in missing settings with defaults', () => {

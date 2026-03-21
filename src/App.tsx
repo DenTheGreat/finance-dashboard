@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -8,10 +8,16 @@ import Savings from './pages/Savings';
 import Settings from './pages/Settings';
 import BankImport from './pages/BankImport';
 import type { Transaction, Debt, SavingsGoal, UserSettings } from './types';
+import { I18nContext, createI18nValue } from './i18n';
+import type { Locale } from './i18n';
 import {
   loadData,
   addTransaction,
   deleteTransaction,
+  updateTransactionCategory,
+  clearTransactions,
+  deduplicateTransactions,
+  addCategoryRule,
   addDebt,
   updateDebt,
   deleteDebt,
@@ -22,18 +28,23 @@ import {
   exportData,
   importData,
 } from './store';
-import { fetchLiveRate } from './utils/exchangeRate';
+import { fetchAllRates } from './utils/exchangeRate';
 import { generateSeedData } from './utils/seed';
 
 export default function App() {
   const [data, setData] = useState(loadData);
 
-  // Fetch live exchange rate on mount if auto mode is enabled
+  // Fetch live exchange rates on mount if auto mode is enabled
   useEffect(() => {
     if (!data.settings.autoExchangeRate) return;
-    fetchLiveRate().then((rate) => {
-      if (rate) {
-        setData((prev) => updateSettings(prev, { exchangeRate: rate }));
+    fetchAllRates().then((rates) => {
+      if (rates) {
+        const plnRate = rates['PLN'];
+        const updates: Partial<import('./types').UserSettings> = { exchangeRates: rates };
+        if (typeof plnRate === 'number' && plnRate > 0) {
+          updates.exchangeRate = plnRate;
+        }
+        setData((prev) => updateSettings(prev, updates));
       }
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -42,8 +53,30 @@ export default function App() {
     setData((prev) => addTransaction(prev, tx));
   }, []);
 
+  const handleClearTransactions = useCallback(() => {
+    setData((prev) => clearTransactions(prev));
+  }, []);
+
+  const handleAddCategoryRule = useCallback((keyword: string, category: string) => {
+    setData((prev) => addCategoryRule(prev, keyword, category));
+  }, []);
+
+  const handleDeduplicateTransactions = useCallback((): number => {
+    let removed = 0;
+    setData((prev) => {
+      const result = deduplicateTransactions(prev);
+      removed = result.removed;
+      return result.data;
+    });
+    return removed;
+  }, []);
+
   const handleDeleteTransaction = useCallback((id: string) => {
     setData((prev) => deleteTransaction(prev, id));
+  }, []);
+
+  const handleUpdateTransactionCategory = useCallback((id: string, category: string) => {
+    setData((prev) => updateTransactionCategory(prev, id, category));
   }, []);
 
   const handleAddDebt = useCallback((debt: Omit<Debt, 'id'>) => {
@@ -98,10 +131,17 @@ export default function App() {
     setData(seed);
   }, []);
 
+  const locale = (data.settings.locale ?? 'en') as Locale;
+  const setLocale = useCallback((l: Locale) => {
+    setData((prev) => updateSettings(prev, { locale: l }));
+  }, []);
+  const i18n = useMemo(() => createI18nValue(locale, setLocale), [locale, setLocale]);
+
   return (
+    <I18nContext.Provider value={i18n}>
     <BrowserRouter>
       <Routes>
-        <Route element={<Layout />}>
+        <Route element={<Layout settings={data.settings} onUpdateSettings={handleUpdateSettings} />}>
           <Route path="/" element={<Dashboard data={data} />} />
           <Route
             path="/transactions"
@@ -110,6 +150,8 @@ export default function App() {
                 data={data}
                 onAdd={handleAddTransaction}
                 onDelete={handleDeleteTransaction}
+                onUpdateCategory={handleUpdateTransactionCategory}
+                onAddRule={handleAddCategoryRule}
               />
             }
           />
@@ -141,6 +183,9 @@ export default function App() {
               <BankImport
                 data={data}
                 onAdd={handleAddTransaction}
+                onClear={handleClearTransactions}
+                onDeduplicate={handleDeduplicateTransactions}
+                onAddRule={handleAddCategoryRule}
               />
             }
           />
@@ -159,5 +204,6 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </I18nContext.Provider>
   );
 }

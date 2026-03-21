@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PieChart,
@@ -6,14 +7,14 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Wallet, TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, X } from 'lucide-react';
 import type { AppData, Transaction } from '../types';
-import { formatCurrency } from '../utils/currency';
 import {
   getMonthlyBreakdown,
   getSavingsAdvice,
   getExpensesByCategory,
 } from '../utils/advisor';
+import { useI18n } from '../i18n';
 
 interface DashboardProps {
   data: AppData;
@@ -35,25 +36,13 @@ function CustomPieTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
-const STATUS_BADGE: Record<
-  'excellent' | 'good' | 'fair' | 'needs_attention',
-  { label: string; classes: string }
-> = {
-  excellent: { label: 'Excellent', classes: 'bg-green-500/20 text-green-400' },
-  good: { label: 'Good', classes: 'bg-blue-500/20 text-blue-400' },
-  fair: { label: 'Fair', classes: 'bg-yellow-500/20 text-yellow-400' },
-  needs_attention: {
-    label: 'Needs Attention',
-    classes: 'bg-red-500/20 text-red-400',
-  },
-};
-
 function getCurrencyTotals(transactions: Transaction[], month: number, year: number) {
-  const result = { USD: { income: 0, expenses: 0 }, PLN: { income: 0, expenses: 0 } };
+  const result: Record<string, { income: number; expenses: number }> = {};
   for (const t of transactions) {
     const d = new Date(t.date);
     if (d.getMonth() !== month || d.getFullYear() !== year) continue;
     const currency = t.currency || 'USD';
+    if (!result[currency]) result[currency] = { income: 0, expenses: 0 };
     if (t.type === 'income') result[currency].income += t.amount;
     else result[currency].expenses += t.amount;
   }
@@ -61,6 +50,8 @@ function getCurrencyTotals(transactions: Transaction[], month: number, year: num
 }
 
 export default function Dashboard({ data }: DashboardProps) {
+  const { t, tc, formatCurrency, formatDate } = useI18n();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const now = new Date();
   const month = now.getMonth();
   const year = now.getFullYear();
@@ -90,38 +81,59 @@ export default function Dashboard({ data }: DashboardProps) {
   );
 
   const pieData = expensesByCategory.map(({ category, amount, color }) => ({
-    name: category,
+    name: tc(category),
     value: amount,
     color,
+    rawCategory: category,
   }));
 
-  // Recent 5 transactions (sorted newest first)
-  const recentTransactions = [...transactions]
+  // Recent transactions (sorted newest first), filtered by selected category
+  const filteredTransactions = selectedCategory
+    ? transactions.filter((t) => t.category === selectedCategory)
+    : transactions;
+  const recentTransactions = [...filteredTransactions]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+    .slice(0, selectedCategory ? 20 : 5);
 
   // Per-currency totals
   const currencyTotals = getCurrencyTotals(transactions, month, year);
-  const usdBalance = currencyTotals.USD.income - currencyTotals.USD.expenses;
-  const plnBalance = currencyTotals.PLN.income - currencyTotals.PLN.expenses;
+  const usdTotals = currencyTotals.USD || { income: 0, expenses: 0 };
+  const plnTotals = currencyTotals.PLN || { income: 0, expenses: 0 };
+  const uahTotals = currencyTotals.UAH || { income: 0, expenses: 0 };
+  const usdBalance = usdTotals.income - usdTotals.expenses;
+  const plnBalance = plnTotals.income - plnTotals.expenses;
+  const uahBalance = uahTotals.income - uahTotals.expenses;
 
   const savingsRate = breakdown.totalIncome > 0
     ? (breakdown.netBalance / breakdown.totalIncome) * 100
     : 0;
+
+  const STATUS_BADGE: Record<
+    'excellent' | 'good' | 'fair' | 'needs_attention',
+    { labelKey: string; classes: string }
+  > = {
+    excellent: { labelKey: 'status.excellent', classes: 'bg-green-500/20 text-green-400' },
+    good: { labelKey: 'status.good', classes: 'bg-blue-500/20 text-blue-400' },
+    fair: { labelKey: 'status.fair', classes: 'bg-yellow-500/20 text-yellow-400' },
+    needs_attention: {
+      labelKey: 'status.needsAttention',
+      classes: 'bg-red-500/20 text-red-400',
+    },
+  };
 
   const badge = STATUS_BADGE[advice.status];
 
   return (
     <div className="space-y-6">
       {/* Page heading */}
-      <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-white">{t('dashboard.title')}</h1>
 
       {/* Top row - 4 stat cards */}
       <div className="grid grid-cols-4 gap-4">
         {/* Total Balance */}
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">Total Balance</span>
+            <span className="text-sm text-gray-400">{t('dashboard.totalBalance')}</span>
             <Wallet className="h-5 w-5 text-gray-500" />
           </div>
           <p
@@ -138,53 +150,72 @@ export default function Dashboard({ data }: DashboardProps) {
           >
             {formatCurrency(plnBalance, 'PLN')}
           </p>
-          <p className="text-xs text-gray-500">This month</p>
+          {(uahTotals.income > 0 || uahTotals.expenses > 0) && (
+            <p
+              className={`text-sm font-semibold ${
+                uahBalance >= 0 ? 'text-accent-400' : 'text-danger-400'
+              }`}
+            >
+              {formatCurrency(uahBalance, 'UAH')}
+            </p>
+          )}
+          <p className="text-xs text-gray-500">{t('dashboard.thisMonth')}</p>
         </div>
 
         {/* Monthly Income */}
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">Monthly Income</span>
+            <span className="text-sm text-gray-400">{t('dashboard.monthlyIncome')}</span>
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
           <p className="text-2xl font-bold text-green-400">
-            {formatCurrency(currencyTotals.USD.income, 'USD')}
+            {formatCurrency(usdTotals.income, 'USD')}
           </p>
-          {currencyTotals.PLN.income > 0 && (
+          {plnTotals.income > 0 && (
             <p className="text-sm font-semibold text-green-400">
-              {formatCurrency(currencyTotals.PLN.income, 'PLN')}
+              {formatCurrency(plnTotals.income, 'PLN')}
             </p>
           )}
-          <p className="text-xs text-gray-500">This month</p>
+          {uahTotals.income > 0 && (
+            <p className="text-sm font-semibold text-green-400">
+              {formatCurrency(uahTotals.income, 'UAH')}
+            </p>
+          )}
+          <p className="text-xs text-gray-500">{t('dashboard.thisMonth')}</p>
         </div>
 
         {/* Monthly Expenses */}
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">Monthly Expenses</span>
+            <span className="text-sm text-gray-400">{t('dashboard.monthlyExpenses')}</span>
             <TrendingDown className="h-5 w-5 text-red-500" />
           </div>
           <p className="text-2xl font-bold text-red-400">
-            {formatCurrency(currencyTotals.USD.expenses, 'USD')}
+            {formatCurrency(usdTotals.expenses, 'USD')}
           </p>
-          {currencyTotals.PLN.expenses > 0 && (
+          {plnTotals.expenses > 0 && (
             <p className="text-sm font-semibold text-red-400">
-              {formatCurrency(currencyTotals.PLN.expenses, 'PLN')}
+              {formatCurrency(plnTotals.expenses, 'PLN')}
             </p>
           )}
-          <p className="text-xs text-gray-500">This month</p>
+          {uahTotals.expenses > 0 && (
+            <p className="text-sm font-semibold text-red-400">
+              {formatCurrency(uahTotals.expenses, 'UAH')}
+            </p>
+          )}
+          <p className="text-xs text-gray-500">{t('dashboard.thisMonth')}</p>
         </div>
 
         {/* Savings Rate */}
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-400">Savings Rate</span>
+            <span className="text-sm text-gray-400">{t('dashboard.savingsRate')}</span>
             <Target className="h-5 w-5 text-blue-500" />
           </div>
           <p className="text-2xl font-bold text-blue-400">
             {savingsRate.toFixed(1)}%
           </p>
-          <p className="text-xs text-gray-500">Goal: {advice.optimalSavingsRate}%</p>
+          <p className="text-xs text-gray-500">{t('dashboard.goal')}: {advice.optimalSavingsRate}%</p>
         </div>
       </div>
 
@@ -193,7 +224,7 @@ export default function Dashboard({ data }: DashboardProps) {
         {/* Pie chart - Expenses by Category */}
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
           <h2 className="text-base font-semibold text-white mb-4">
-            Expenses by Category
+            {t('dashboard.expensesByCategory')}
           </h2>
           {pieData.length > 0 ? (
             <div className="flex gap-4 items-center">
@@ -207,30 +238,47 @@ export default function Dashboard({ data }: DashboardProps) {
                     outerRadius={90}
                     paddingAngle={2}
                     dataKey="value"
+                    cursor="pointer"
+                    onClick={(_, index) => {
+                      const raw = pieData[index]?.rawCategory;
+                      setSelectedCategory(prev => prev === raw ? null : raw);
+                    }}
                   >
                     {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.color}
+                        opacity={selectedCategory && selectedCategory !== entry.rawCategory ? 0.3 : 1}
+                        stroke={selectedCategory === entry.rawCategory ? '#fff' : 'none'}
+                        strokeWidth={selectedCategory === entry.rawCategory ? 2 : 0}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip content={<CustomPieTooltip />} />
+                  <Tooltip content={<CustomPieTooltip />} isAnimationActive={false} />
                 </PieChart>
               </ResponsiveContainer>
               {/* Legend */}
               <div className="flex flex-col gap-1.5 min-w-[130px]">
                 {pieData.map((entry) => (
-                  <div key={entry.name} className="flex items-center gap-2">
+                  <button
+                    key={entry.rawCategory}
+                    onClick={() => setSelectedCategory(prev => prev === entry.rawCategory ? null : entry.rawCategory)}
+                    className={`flex items-center gap-2 text-left transition-opacity ${
+                      selectedCategory && selectedCategory !== entry.rawCategory ? 'opacity-30' : ''
+                    }`}
+                  >
                     <span
                       className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: entry.color }}
                     />
                     <span className="text-xs text-gray-400 truncate">{entry.name}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           ) : (
             <div className="flex items-center justify-center h-[220px] text-gray-500 text-sm">
-              No expense data for this month
+              {t('dashboard.noExpenseData')}
             </div>
           )}
         </div>
@@ -238,20 +286,20 @@ export default function Dashboard({ data }: DashboardProps) {
         {/* Savings Advisor */}
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-white">Savings Advisor</h2>
+            <h2 className="text-base font-semibold text-white">{t('dashboard.savingsAdvisor')}</h2>
             <span
               className={`text-xs font-medium px-2.5 py-1 rounded-full ${badge.classes}`}
             >
-              {badge.label}
+              {t(badge.labelKey)}
             </span>
           </div>
 
           {/* 50/30/20 bar */}
           <div className="mb-4">
             <div className="flex justify-between text-xs text-gray-400 mb-1">
-              <span>Needs</span>
-              <span>Wants</span>
-              <span>Savings</span>
+              <span>{t('advisor.needs')}</span>
+              <span>{t('advisor.wants')}</span>
+              <span>{t('advisor.savings')}</span>
             </div>
             <div className="flex rounded-full overflow-hidden h-3 bg-gray-800">
               {/* Needs segment */}
@@ -260,7 +308,7 @@ export default function Dashboard({ data }: DashboardProps) {
                 style={{
                   width: `${Math.min(Math.max(advice.needsPercent, 0), 100)}%`,
                 }}
-                title={`Needs: ${advice.needsPercent.toFixed(1)}%`}
+                title={`${t('advisor.needs')}: ${advice.needsPercent.toFixed(1)}%`}
               />
               {/* Wants segment */}
               <div
@@ -268,7 +316,7 @@ export default function Dashboard({ data }: DashboardProps) {
                 style={{
                   width: `${Math.min(Math.max(advice.wantsPercent, 0), 100)}%`,
                 }}
-                title={`Wants: ${advice.wantsPercent.toFixed(1)}%`}
+                title={`${t('advisor.wants')}: ${advice.wantsPercent.toFixed(1)}%`}
               />
               {/* Savings segment */}
               <div
@@ -276,7 +324,7 @@ export default function Dashboard({ data }: DashboardProps) {
                 style={{
                   width: `${Math.min(Math.max(advice.savingsPercent, 0), 100)}%`,
                 }}
-                title={`Savings: ${advice.savingsPercent.toFixed(1)}%`}
+                title={`${t('advisor.savings')}: ${advice.savingsPercent.toFixed(1)}%`}
               />
             </div>
             <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -290,15 +338,15 @@ export default function Dashboard({ data }: DashboardProps) {
           <div className="flex gap-4 text-xs text-gray-500 mb-4">
             <span className="flex items-center gap-1">
               <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
-              Target 50%
+              {t('advisor.target')} 50%
             </span>
             <span className="flex items-center gap-1">
               <span className="inline-block h-2 w-2 rounded-full bg-pink-500" />
-              Target 30%
+              {t('advisor.target')} 30%
             </span>
             <span className="flex items-center gap-1">
               <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-              Target 20%
+              {t('advisor.target')} 20%
             </span>
           </div>
 
@@ -317,12 +365,25 @@ export default function Dashboard({ data }: DashboardProps) {
       {/* Bottom row - Recent Transactions */}
       <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-white">Recent Transactions</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-semibold text-white">
+              {selectedCategory ? `${tc(selectedCategory)} ${t('dashboard.transactions')}` : t('dashboard.recentTransactions')}
+            </h2>
+            {selectedCategory && (
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="flex items-center gap-1 text-xs bg-gray-800 text-gray-400 hover:text-gray-200 px-2 py-1 rounded-full transition-colors"
+              >
+                {t('dashboard.clearFilter')}
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
           <Link
             to="/transactions"
             className="text-sm text-primary-400 hover:text-primary-300 transition-colors"
           >
-            View all
+            {t('dashboard.viewAll')}
           </Link>
         </div>
 
@@ -336,14 +397,11 @@ export default function Dashboard({ data }: DashboardProps) {
                 {/* Left: date + description + category */}
                 <div className="flex items-center gap-4 min-w-0">
                   <div className="text-xs text-gray-500 w-20 shrink-0">
-                    {new Date(tx.date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
+                    {formatDate(tx.date)}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-white truncate">{tx.description}</p>
-                    <p className="text-xs text-gray-500">{tx.category}</p>
+                    <p className="text-xs text-gray-500">{tc(tx.category)}</p>
                   </div>
                 </div>
 
@@ -361,9 +419,9 @@ export default function Dashboard({ data }: DashboardProps) {
           </div>
         ) : (
           <p className="text-sm text-gray-500 text-center py-6">
-            No transactions yet.{' '}
+            {t('dashboard.noTransactions')}{' '}
             <Link to="/transactions" className="text-primary-400 hover:text-primary-300">
-              Add one
+              {t('dashboard.addOne')}
             </Link>
           </p>
         )}

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { differenceInDays, format } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import { Plus, Trash2, X, PiggyBank, Target } from 'lucide-react';
 import type { AppData, SavingsGoal } from '../types';
-import { formatCurrency } from '../utils/currency';
 import { getMonthlyBreakdown, getSavingsAdvice } from '../utils/advisor';
+import { useI18n } from '../i18n';
 
 interface SavingsProps {
   data: AppData;
@@ -16,30 +16,12 @@ interface AddGoalForm {
   name: string;
   targetAmount: string;
   currentAmount: string;
-  currency: 'USD' | 'PLN';
+  currency: import('../types').Currency;
   deadline: string;
 }
 
-const STATUS_CONFIG = {
-  excellent: {
-    label: 'Excellent',
-    classes: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-  },
-  good: {
-    label: 'Good',
-    classes: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-  },
-  fair: {
-    label: 'Fair',
-    classes: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
-  },
-  needs_attention: {
-    label: 'Needs Attention',
-    classes: 'bg-red-500/20 text-red-400 border border-red-500/30',
-  },
-};
-
 export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProps) {
+  const { t, formatCurrency, formatDate } = useI18n();
   const [showModal, setShowModal] = useState(false);
   const [addFundsId, setAddFundsId] = useState<string | null>(null);
   const [addFundsAmount, setAddFundsAmount] = useState('');
@@ -51,7 +33,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
     deadline: '',
   });
 
-  // Advisor data — use current month
+  // Advisor data -- use current month
   const now = new Date();
   const breakdown = getMonthlyBreakdown(
     data.transactions,
@@ -62,7 +44,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
   );
   const advice = getSavingsAdvice(breakdown);
 
-  // 50/30/20 bar percentages — clamp each to [0,100] so bar never overflows
+  // 50/30/20 bar percentages -- clamp each to [0,100] so bar never overflows
   const needsPct = Math.min(100, Math.max(0, advice.needsPercent));
   const wantsPct = Math.min(100, Math.max(0, advice.wantsPercent));
   const savingsPct = Math.min(100, Math.max(0, advice.savingsPercent));
@@ -71,6 +53,25 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
   const barNeeds = totalPct > 0 ? (needsPct / totalPct) * 100 : 33.33;
   const barWants = totalPct > 0 ? (wantsPct / totalPct) * 100 : 33.33;
   const barSavings = totalPct > 0 ? (savingsPct / totalPct) * 100 : 33.34;
+
+  const STATUS_CONFIG: Record<string, { labelKey: string; classes: string }> = {
+    excellent: {
+      labelKey: 'status.excellent',
+      classes: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+    },
+    good: {
+      labelKey: 'status.good',
+      classes: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+    },
+    fair: {
+      labelKey: 'status.fair',
+      classes: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+    },
+    needs_attention: {
+      labelKey: 'status.needsAttention',
+      classes: 'bg-red-500/20 text-red-400 border border-red-500/30',
+    },
+  };
 
   const statusCfg = STATUS_CONFIG[advice.status];
 
@@ -119,15 +120,15 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Savings Goals</h1>
-          <p className="text-gray-400 text-sm mt-1">Track and grow your savings targets</p>
+          <h1 className="text-2xl font-bold text-white">{t('savings.title')}</h1>
+          <p className="text-gray-400 text-sm mt-1">{t('savings.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Add Goal
+          {t('savings.addGoal')}
         </button>
       </div>
 
@@ -135,11 +136,11 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
       <div className="bg-gradient-to-r from-primary-900/50 to-primary-800/30 rounded-xl p-6 border border-primary-700/30">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-white font-semibold text-lg">Savings Advisor</h2>
-            <p className="text-primary-300/70 text-sm">Based on the 50/30/20 rule</p>
+            <h2 className="text-white font-semibold text-lg">{t('dashboard.savingsAdvisor')}</h2>
+            <p className="text-primary-300/70 text-sm">{t('advisor.basedOn503020')}</p>
           </div>
           <span className={`px-3 py-1 rounded-full text-xs font-medium shrink-0 ${statusCfg.classes}`}>
-            {statusCfg.label}
+            {t(statusCfg.labelKey)}
           </span>
         </div>
 
@@ -149,49 +150,49 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
             <div
               className="bg-blue-500 transition-all duration-500"
               style={{ width: `${barNeeds}%` }}
-              title={`Needs: ${advice.needsPercent.toFixed(1)}%`}
+              title={`${t('advisor.needs')}: ${advice.needsPercent.toFixed(1)}%`}
             />
             <div
               className="bg-purple-500 transition-all duration-500"
               style={{ width: `${barWants}%` }}
-              title={`Wants: ${advice.wantsPercent.toFixed(1)}%`}
+              title={`${t('advisor.wants')}: ${advice.wantsPercent.toFixed(1)}%`}
             />
             <div
               className="bg-emerald-500 transition-all duration-500"
               style={{ width: `${barSavings}%` }}
-              title={`Savings: ${advice.savingsPercent.toFixed(1)}%`}
+              title={`${t('advisor.savings')}: ${advice.savingsPercent.toFixed(1)}%`}
             />
           </div>
         </div>
 
-        {/* Legend — actual vs recommended */}
+        {/* Legend -- actual vs recommended */}
         <div className="grid grid-cols-3 gap-3 mb-5">
           {/* Needs */}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 shrink-0" />
-              <span className="text-gray-300 text-xs font-medium">Needs</span>
+              <span className="text-gray-300 text-xs font-medium">{t('advisor.needs')}</span>
             </div>
             <p className="text-white text-sm font-semibold">{advice.needsPercent.toFixed(1)}%</p>
-            <p className="text-gray-500 text-xs">Recommended: 50%</p>
+            <p className="text-gray-500 text-xs">{t('advisor.recommended')}: 50%</p>
           </div>
           {/* Wants */}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-purple-500 shrink-0" />
-              <span className="text-gray-300 text-xs font-medium">Wants</span>
+              <span className="text-gray-300 text-xs font-medium">{t('advisor.wants')}</span>
             </div>
             <p className="text-white text-sm font-semibold">{advice.wantsPercent.toFixed(1)}%</p>
-            <p className="text-gray-500 text-xs">Recommended: 30%</p>
+            <p className="text-gray-500 text-xs">{t('advisor.recommended')}: 30%</p>
           </div>
           {/* Savings */}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 shrink-0" />
-              <span className="text-gray-300 text-xs font-medium">Savings</span>
+              <span className="text-gray-300 text-xs font-medium">{t('advisor.savings')}</span>
             </div>
             <p className="text-white text-sm font-semibold">{advice.savingsPercent.toFixed(1)}%</p>
-            <p className="text-gray-500 text-xs">Recommended: 20%</p>
+            <p className="text-gray-500 text-xs">{t('advisor.recommended')}: 20%</p>
           </div>
         </div>
 
@@ -199,11 +200,11 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
         <div className="flex items-center gap-2 mb-4 p-3 bg-primary-900/40 rounded-lg border border-primary-700/20">
           <Target className="h-4 w-4 text-primary-300 shrink-0" />
           <span className="text-gray-300 text-sm">
-            Optimal monthly savings:&nbsp;
+            {t('advisor.optimalMonthlySavings')}:&nbsp;
             <span className="text-white font-semibold">
               {formatCurrency(advice.optimalSavingsAmount, data.settings.primaryCurrency)}
             </span>
-            <span className="text-gray-500 ml-1">({advice.optimalSavingsRate}% of income)</span>
+            <span className="text-gray-500 ml-1">({advice.optimalSavingsRate}% {t('advisor.ofIncome')})</span>
           </span>
         </div>
 
@@ -212,7 +213,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
           <ul className="space-y-1.5">
             {advice.tips.map((tip, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                <span className="text-primary-400 mt-0.5 shrink-0">•</span>
+                <span className="text-primary-400 mt-0.5 shrink-0">{'\u2022'}</span>
                 {tip}
               </li>
             ))}
@@ -224,14 +225,14 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
       {data.savingsGoals.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <PiggyBank className="h-14 w-14 text-gray-700 mb-4" />
-          <p className="text-gray-400 text-lg font-medium">No savings goals yet</p>
-          <p className="text-gray-600 text-sm mt-1 mb-5">Add a goal to start tracking your progress</p>
+          <p className="text-gray-400 text-lg font-medium">{t('savings.noGoals')}</p>
+          <p className="text-gray-600 text-sm mt-1 mb-5">{t('savings.addGoalPrompt')}</p>
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors"
           >
             <Plus className="h-4 w-4" />
-            Add Goal
+            {t('savings.addGoal')}
           </button>
         </div>
       ) : (
@@ -259,7 +260,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                   <button
                     onClick={() => onDelete(goal.id)}
                     className="text-gray-600 hover:text-red-400 transition-colors shrink-0 p-0.5"
-                    aria-label="Delete goal"
+                    aria-label={t('common.delete')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -268,9 +269,9 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                 {/* Progress bar */}
                 <div>
                   <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-                    <span>{pct.toFixed(1)}% complete</span>
+                    <span>{pct.toFixed(1)}% {t('savings.complete')}</span>
                     {isComplete && (
-                      <span className="text-emerald-400 font-medium">Goal reached!</span>
+                      <span className="text-emerald-400 font-medium">{t('savings.goalReached')}</span>
                     )}
                   </div>
                   <div className="h-2.5 bg-gray-700 rounded-full overflow-hidden">
@@ -286,13 +287,13 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                 {/* Amounts */}
                 <div className="flex items-end justify-between">
                   <div>
-                    <p className="text-gray-400 text-xs mb-0.5">Current</p>
+                    <p className="text-gray-400 text-xs mb-0.5">{t('savings.current')}</p>
                     <p className="text-white font-bold text-lg leading-tight">
                       {formatCurrency(goal.currentAmount, goal.currency)}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-gray-400 text-xs mb-0.5">Target</p>
+                    <p className="text-gray-400 text-xs mb-0.5">{t('savings.target')}</p>
                     <p className="text-gray-300 font-semibold text-lg leading-tight">
                       {formatCurrency(goal.targetAmount, goal.currency)}
                     </p>
@@ -305,15 +306,15 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                     <Target className="h-3.5 w-3.5 text-gray-500 shrink-0" />
                     {daysLeft !== null && daysLeft < 0 ? (
                       <span className="text-red-400">
-                        Deadline passed ({format(new Date(goal.deadline), 'MMM d, yyyy')})
+                        {t('savings.deadlinePassed')} ({formatDate(goal.deadline)})
                       </span>
                     ) : daysLeft === 0 ? (
-                      <span className="text-amber-400">Due today</span>
+                      <span className="text-amber-400">{t('savings.dueToday')}</span>
                     ) : (
                       <span className="text-gray-400">
-                        {daysLeft} days left &mdash;{' '}
+                        {daysLeft} {t('savings.daysLeft')} &mdash;{' '}
                         <span className="text-gray-500">
-                          {format(new Date(goal.deadline), 'MMM d, yyyy')}
+                          {formatDate(goal.deadline)}
                         </span>
                       </span>
                     )}
@@ -329,7 +330,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                           type="number"
                           min="0"
                           step="0.01"
-                          placeholder="Amount"
+                          placeholder={t('form.amount')}
                           value={addFundsAmount}
                           onChange={(e) => setAddFundsAmount(e.target.value)}
                           className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-primary-500"
@@ -346,7 +347,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                           onClick={() => handleAddFunds(goal)}
                           className="px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors"
                         >
-                          Add
+                          {t('savings.add')}
                         </button>
                         <button
                           onClick={() => {
@@ -367,7 +368,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                         className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg text-sm font-medium transition-colors"
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        Add Funds
+                        {t('savings.addFunds')}
                       </button>
                     )}
                   </div>
@@ -384,7 +385,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
           <div className="w-full max-w-md bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl">
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
-              <h2 className="text-white font-semibold text-lg">New Savings Goal</h2>
+              <h2 className="text-white font-semibold text-lg">{t('savings.newGoal')}</h2>
               <button
                 onClick={() => setShowModal(false)}
                 className="text-gray-500 hover:text-gray-300 transition-colors"
@@ -398,7 +399,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
               {/* Goal Name */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                  Goal Name
+                  {t('savings.goalName')}
                 </label>
                 <input
                   type="text"
@@ -415,7 +416,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                    Target Amount
+                    {t('savings.targetAmount')}
                   </label>
                   <input
                     type="number"
@@ -431,7 +432,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                    Currency
+                    {t('form.currency')}
                   </label>
                   <select
                     name="currency"
@@ -448,7 +449,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
               {/* Current Amount */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                  Current Amount <span className="text-gray-500">(optional)</span>
+                  {t('savings.currentAmount')} <span className="text-gray-500">({t('common.optional')})</span>
                 </label>
                 <input
                   type="number"
@@ -465,7 +466,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
               {/* Deadline */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                  Deadline <span className="text-gray-500">(optional)</span>
+                  {t('savings.deadline')} <span className="text-gray-500">({t('common.optional')})</span>
                 </label>
                 <input
                   type="date"
@@ -483,13 +484,13 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                   onClick={() => setShowModal(false)}
                   className="flex-1 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg text-sm font-medium transition-colors"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors"
                 >
-                  Save Goal
+                  {t('savings.saveGoal')}
                 </button>
               </div>
             </form>

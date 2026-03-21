@@ -3,11 +3,13 @@ import type { Currency } from '../types';
 const CURRENCY_SYMBOLS: Record<Currency, string> = {
   USD: '$',
   PLN: 'zł',
+  UAH: '₴',
 };
 
 const CURRENCY_LOCALES: Record<Currency, string> = {
   USD: 'en-US',
   PLN: 'pl-PL',
+  UAH: 'uk-UA',
 };
 
 export function formatCurrency(amount: number, currency: Currency): string {
