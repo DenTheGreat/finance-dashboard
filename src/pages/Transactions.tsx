@@ -20,6 +20,7 @@ import {
   EXPENSE_CATEGORIES,
   CATEGORY_COLORS,
 } from '../types';
+import { convertCurrency } from '../utils/currency';
 import { useI18n } from '../i18n';
 
 // ---------------------------------------------------------------------------
@@ -709,9 +710,18 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
           <span className={`font-semibold text-sm ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
             {isIncome ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
           </span>
-          {tx.currency === 'PLN' && tx.exchangeRateAtTime && (
+          {tx.currency !== data.settings.primaryCurrency && (
             <div className="text-xs text-gray-500">
-              ~{formatCurrency(tx.amount / tx.exchangeRateAtTime, 'USD')}
+              ~{formatCurrency(
+                convertCurrency(
+                  tx.amount,
+                  tx.currency,
+                  data.settings.primaryCurrency,
+                  tx.exchangeRateAtTime ?? data.settings.exchangeRate,
+                  data.settings.exchangeRates,
+                ),
+                data.settings.primaryCurrency,
+              )}
             </div>
           )}
         </div>

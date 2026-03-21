@@ -97,14 +97,16 @@ export default function Dashboard({ data }: DashboardProps) {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, selectedCategory ? 20 : 5);
 
-  // Per-currency totals
+  // Per-currency totals + converted totals in primary currency
   const currencyTotals = getCurrencyTotals(transactions, month, year);
-  const usdTotals = currencyTotals.USD || { income: 0, expenses: 0 };
-  const plnTotals = currencyTotals.PLN || { income: 0, expenses: 0 };
-  const uahTotals = currencyTotals.UAH || { income: 0, expenses: 0 };
-  const usdBalance = usdTotals.income - usdTotals.expenses;
-  const plnBalance = plnTotals.income - plnTotals.expenses;
-  const uahBalance = uahTotals.income - uahTotals.expenses;
+  const totalIncomePrimary = breakdown.totalIncome;
+  const totalExpensesPrimary = breakdown.totalExpenses;
+  const totalBalancePrimary = breakdown.netBalance;
+
+  // Secondary currencies (all except primary)
+  const secondaryCurrencies = Object.entries(currencyTotals)
+    .filter(([cur]) => cur !== primaryCurrency)
+    .filter(([, totals]) => totals.income > 0 || totals.expenses > 0);
 
   const savingsRate = breakdown.totalIncome > 0
     ? (breakdown.netBalance / breakdown.totalIncome) * 100
@@ -131,7 +133,7 @@ export default function Dashboard({ data }: DashboardProps) {
       <h1 className="text-2xl font-bold text-white">{t('dashboard.title')}</h1>
 
       {/* Top row - 4 stat cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Balance */}
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col gap-3">
           <div className="flex items-center justify-between">
@@ -140,27 +142,19 @@ export default function Dashboard({ data }: DashboardProps) {
           </div>
           <p
             className={`text-2xl font-bold ${
-              usdBalance >= 0 ? 'text-accent-400' : 'text-danger-400'
+              totalBalancePrimary >= 0 ? 'text-accent-400' : 'text-danger-400'
             }`}
           >
-            {formatCurrency(usdBalance, 'USD')}
+            {formatCurrency(totalBalancePrimary, primaryCurrency)}
           </p>
-          <p
-            className={`text-sm font-semibold ${
-              plnBalance >= 0 ? 'text-accent-400' : 'text-danger-400'
-            }`}
-          >
-            {formatCurrency(plnBalance, 'PLN')}
-          </p>
-          {(uahTotals.income > 0 || uahTotals.expenses > 0) && (
-            <p
-              className={`text-sm font-semibold ${
-                uahBalance >= 0 ? 'text-accent-400' : 'text-danger-400'
-              }`}
-            >
-              {formatCurrency(uahBalance, 'UAH')}
-            </p>
-          )}
+          {secondaryCurrencies.map(([cur, totals]) => {
+            const bal = totals.income - totals.expenses;
+            return (
+              <p key={cur} className={`text-xs ${bal >= 0 ? 'text-gray-400' : 'text-red-400'}`}>
+                {formatCurrency(bal, cur)} ({cur})
+              </p>
+            );
+          })}
           <p className="text-xs text-gray-500">{t('dashboard.thisMonth')}</p>
         </div>
 
@@ -171,18 +165,13 @@ export default function Dashboard({ data }: DashboardProps) {
             <TrendingUp className="h-5 w-5 text-green-500" />
           </div>
           <p className="text-2xl font-bold text-green-400">
-            {formatCurrency(usdTotals.income, 'USD')}
+            {formatCurrency(totalIncomePrimary, primaryCurrency)}
           </p>
-          {plnTotals.income > 0 && (
-            <p className="text-sm font-semibold text-green-400">
-              {formatCurrency(plnTotals.income, 'PLN')}
+          {secondaryCurrencies.filter(([, t]) => t.income > 0).map(([cur, totals]) => (
+            <p key={cur} className="text-xs text-gray-400">
+              {formatCurrency(totals.income, cur)} ({cur})
             </p>
-          )}
-          {uahTotals.income > 0 && (
-            <p className="text-sm font-semibold text-green-400">
-              {formatCurrency(uahTotals.income, 'UAH')}
-            </p>
-          )}
+          ))}
           <p className="text-xs text-gray-500">{t('dashboard.thisMonth')}</p>
         </div>
 
@@ -193,18 +182,13 @@ export default function Dashboard({ data }: DashboardProps) {
             <TrendingDown className="h-5 w-5 text-red-500" />
           </div>
           <p className="text-2xl font-bold text-red-400">
-            {formatCurrency(usdTotals.expenses, 'USD')}
+            {formatCurrency(totalExpensesPrimary, primaryCurrency)}
           </p>
-          {plnTotals.expenses > 0 && (
-            <p className="text-sm font-semibold text-red-400">
-              {formatCurrency(plnTotals.expenses, 'PLN')}
+          {secondaryCurrencies.filter(([, t]) => t.expenses > 0).map(([cur, totals]) => (
+            <p key={cur} className="text-xs text-gray-400">
+              {formatCurrency(totals.expenses, cur)} ({cur})
             </p>
-          )}
-          {uahTotals.expenses > 0 && (
-            <p className="text-sm font-semibold text-red-400">
-              {formatCurrency(uahTotals.expenses, 'UAH')}
-            </p>
-          )}
+          ))}
           <p className="text-xs text-gray-500">{t('dashboard.thisMonth')}</p>
         </div>
 
