@@ -18,11 +18,12 @@ import {
 } from '../types';
 import {
   parseCSV,
+  parseDate,
+  detectCategoryForDescription,
   type ParseResult,
   type ParsedBankTransaction,
   type ColumnMapping,
 } from '../utils/pkoImport';
-import { saveCustomRule } from '../utils/customRules';
 import { useI18n } from '../i18n';
 
 interface BankImportProps {
@@ -120,7 +121,7 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
         handleParseResult(result);
         return;
       }
-      // Try windows-1250 (PKO) / windows-1251 (PrivatBank) as fallback
+      // Try windows-1251 (PrivatBank) then windows-1250 (PKO) as fallback
       const reader2 = new FileReader();
       reader2.onload = (e2) => {
         const text2 = e2.target?.result;
@@ -129,9 +130,24 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
           return;
         }
         const result2 = parseCSV(text2, data.categoryRules);
-        handleParseResult(result2);
+        if (result2.detectedBank !== 'unknown' && result2.transactions.length > 0) {
+          handleParseResult(result2);
+          return;
+        }
+        // Try windows-1250 (PKO) as final fallback
+        const reader3 = new FileReader();
+        reader3.onload = (e3) => {
+          const text3 = e3.target?.result;
+          if (typeof text3 !== 'string') {
+            setParseError(t('import.couldNotRead'));
+            return;
+          }
+          const result3 = parseCSV(text3, data.categoryRules);
+          handleParseResult(result3);
+        };
+        reader3.readAsText(file, 'windows-1250');
       };
-      reader2.readAsText(file, 'windows-1250');
+      reader2.readAsText(file, 'windows-1251');
     };
     reader.readAsText(file, 'UTF-8');
   }
@@ -199,7 +215,6 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
         const keyword = extractKeyword(tx.description);
         if (keyword) {
           onAddRule(keyword, categoryOverrides[i]);
-          saveCustomRule(keyword, categoryOverrides[i]);
         }
       }
 
@@ -394,6 +409,7 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
             </div>
             <button
               onClick={handleCancel}
+              aria-label="Close"
               className="text-gray-400 hover:text-gray-100 transition-colors"
             >
               <X className="h-5 w-5" />
@@ -526,6 +542,7 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
               )}
               <button
                 onClick={handleCancel}
+                aria-label="Close"
                 className="text-gray-400 hover:text-gray-100 transition-colors"
               >
                 <X className="h-5 w-5" />
@@ -853,11 +870,11 @@ function remapTransactions(
           : 'PLN';
 
       const isIncome = amount > 0;
-      const suggestedCategory = detectCategoryFallback(fullDesc);
+      const suggestedCategory = detectCategoryForDescription(fullDesc);
 
       // Date
       const rawDate = raw[mapping.date] ?? '';
-      const date = parseDateFallback(rawDate);
+      const date = parseDate(rawDate);
 
       return {
         date,
@@ -876,35 +893,3 @@ function remapTransactions(
     .filter((t): t is ParsedBankTransaction => t !== null);
 }
 
-function detectCategoryFallback(
-  description: string,
-): import('../types').ExpenseCategory | import('../types').IncomeCategory {
-  const lower = description.toLowerCase();
-  if (lower.includes('wynagrodzenie') || lower.includes('salary') || lower.includes('pensja'))
-    return 'Salary';
-  if (lower.includes('biedronka') || lower.includes('lidl') || lower.includes('\u017Cabka') || lower.includes('restaurant') || lower.includes('mcdonalds') || lower.includes('kfc'))
-    return 'Food';
-  if (lower.includes('czynsz') || lower.includes('wynajem') || lower.includes('rent') || lower.includes('hipoteka'))
-    return 'Housing';
-  if (lower.includes('uber') || lower.includes('bolt') || lower.includes('orlen') || lower.includes('paliwo') || lower.includes('pkp'))
-    return 'Transportation';
-  if (lower.includes('pge') || lower.includes('tauron') || lower.includes('internet') || lower.includes('orange'))
-    return 'Utilities';
-  if (lower.includes('netflix') || lower.includes('spotify') || lower.includes('kino'))
-    return 'Entertainment';
-  if (lower.includes('allegro') || lower.includes('amazon') || lower.includes('zalando'))
-    return 'Shopping';
-  if (lower.includes('apteka') || lower.includes('medicover') || lower.includes('luxmed'))
-    return 'Healthcare';
-  return 'Other';
-}
-
-function parseDateFallback(raw: string): string {
-  const trimmed = raw.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-  const m = trimmed.match(/^(\d{2})[.\-/](\d{2})[.\-/](\d{4})$/);
-  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-  const m2 = trimmed.match(/^(\d{4})[.\-/](\d{2})[.\-/](\d{2})$/);
-  if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
-  return trimmed;
-}

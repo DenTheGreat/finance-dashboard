@@ -1,11 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { AppData, Transaction, Debt, SavingsGoal } from '../types';
+import type { AppData, Transaction, Debt, SavingsGoal, Currency, ExpenseCategory, IncomeCategory } from '../types';
 
 function tx(
   type: 'income' | 'expense',
   amount: number,
-  currency: 'USD' | 'PLN',
-  category: string,
+  currency: Currency,
+  category: ExpenseCategory | IncomeCategory,
   description: string,
   date: string,
 ): Transaction {
@@ -13,8 +13,8 @@ function tx(
     id: uuidv4(),
     type,
     amount,
-    currency: currency as any,
-    category: category as any,
+    currency,
+    category,
     description,
     date,
   };

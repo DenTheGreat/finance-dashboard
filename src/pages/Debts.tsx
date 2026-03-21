@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, X, CreditCard, DollarSign } from 'lucide-react';
-import type { AppData, Debt } from '../types';
+import type { AppData, Debt, Currency } from '../types';
 import { useI18n } from '../i18n';
 
 interface DebtsProps {
@@ -14,7 +14,7 @@ interface FormState {
   name: string;
   totalAmount: string;
   paidAmount: string;
-  currency: 'USD' | 'PLN';
+  currency: Currency;
   interestRate: string;
   dueDate: string;
   minimumPayment: string;
@@ -74,6 +74,13 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
     setForm(defaultForm);
     setShowModal(false);
   }
+
+  useEffect(() => {
+    if (!showModal) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowModal(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showModal]);
 
   function handleMakePayment(debt: Debt) {
     const amount = parseFloat(paymentInputs[debt.id] || '');
@@ -287,7 +294,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
 
       {/* Add Debt Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-white">{t('debts.addDebt')}</h2>
@@ -341,6 +348,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                   >
                     <option value="USD">USD</option>
                     <option value="PLN">PLN</option>
+                    <option value="UAH">UAH</option>
                   </select>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { differenceInDays } from 'date-fns';
 import { Plus, Trash2, X, PiggyBank, Target } from 'lucide-react';
 import type { AppData, SavingsGoal } from '../types';
@@ -74,6 +74,13 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
   };
 
   const statusCfg = STATUS_CONFIG[advice.status];
+
+  useEffect(() => {
+    if (!showModal) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowModal(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showModal]);
 
   // --- Handlers ---
   function handleFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -381,7 +388,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
 
       {/* Add Goal Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-md bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl">
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">

@@ -30,9 +30,23 @@ export function convertCurrency(
   from: Currency,
   to: Currency,
   exchangeRate: number, // USD to PLN
+  exchangeRates?: Record<string, number>,
 ): number {
   if (from === to) return amount;
+
+  // Use USD-based cross rates when available
+  if (exchangeRates) {
+    const fromRate = from === 'USD' ? 1 : exchangeRates[from];
+    const toRate = to === 'USD' ? 1 : exchangeRates[to];
+    if (fromRate && toRate) {
+      return amount * (toRate / fromRate);
+    }
+  }
+
+  // Fall back to the old exchangeRate param for USD<->PLN
   if (from === 'USD' && to === 'PLN') return amount * exchangeRate;
   if (from === 'PLN' && to === 'USD') return amount / exchangeRate;
+
+  console.warn(`[convertCurrency] Cannot convert ${from} -> ${to}: no exchange rate available`);
   return amount;
 }

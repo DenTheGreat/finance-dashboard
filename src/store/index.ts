@@ -180,6 +180,24 @@ export function deleteCategoryRule(data: AppData, keyword: string): AppData {
   return updated;
 }
 
+// Batch operations
+export function deleteTransactions(data: AppData, ids: Set<string>): AppData {
+  const updated = { ...data, transactions: data.transactions.filter(t => !ids.has(t.id)) };
+  saveData(updated);
+  return updated;
+}
+
+export function updateTransactionsCategory(data: AppData, ids: Set<string>, category: string): AppData {
+  const updated = {
+    ...data,
+    transactions: data.transactions.map(t =>
+      ids.has(t.id) ? { ...t, category: category as Transaction['category'] } : t
+    ),
+  };
+  saveData(updated);
+  return updated;
+}
+
 // Export / Import
 export function exportData(data: AppData): string {
   return JSON.stringify(data, null, 2);

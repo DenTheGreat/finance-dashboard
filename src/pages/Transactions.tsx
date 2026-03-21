@@ -32,6 +32,8 @@ interface TransactionsProps {
   onDelete: (id: string) => void;
   onUpdateCategory: (id: string, category: string) => void;
   onAddRule: (keyword: string, category: string) => void;
+  onBulkDelete: (ids: Set<string>) => void;
+  onBulkUpdateCategory: (ids: Set<string>, category: string) => void;
 }
 
 type SortCol = 'date' | 'description' | 'category' | 'amount' | 'currency' | 'type';
@@ -299,7 +301,7 @@ function FilterDropdown({ column, filters, setFilters, transactions, active }: F
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, onAddRule }: TransactionsProps) {
+export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, onAddRule, onBulkDelete, onBulkUpdateCategory }: TransactionsProps) {
   const { t, tc, formatDate, formatCurrency } = useI18n();
 
   // --- Sort state ---
@@ -345,6 +347,13 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
   function handleOpenForm() { resetForm(); setShowForm(true); }
   function handleCloseForm() { setShowForm(false); }
+
+  useEffect(() => {
+    if (!showForm) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowForm(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showForm]);
 
   function handleFormTypeChange(type: 'income' | 'expense') {
     setFormType(type);
@@ -617,9 +626,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
   const handleBulkSetCategory = useCallback(() => {
     if (!bulkCategory) return;
-    for (const id of selected) {
-      onUpdateCategory(id, bulkCategory);
-    }
+    onBulkUpdateCategory(selected, bulkCategory);
     // Save first selected tx description as a rule
     const firstTx = data.transactions.find((t) => selected.has(t.id));
     if (firstTx?.description) {
@@ -627,14 +634,14 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
     }
     setSelected(new Set());
     setBulkCategory('');
-  }, [bulkCategory, selected, onUpdateCategory, onAddRule, data.transactions]);
+  }, [bulkCategory, selected, onBulkUpdateCategory, onAddRule, data.transactions]);
 
   const handleBulkDelete = useCallback(() => {
     if (!confirmDelete) { setConfirmDelete(true); return; }
-    for (const id of selected) onDelete(id);
+    onBulkDelete(selected);
     setSelected(new Set());
     setConfirmDelete(false);
-  }, [confirmDelete, selected, onDelete]);
+  }, [confirmDelete, selected, onBulkDelete]);
 
   // --- Column header helper ---
   function ColHeader({ col, label, className = '' }: { col: SortCol; label: string; className?: string }) {
@@ -1004,6 +1011,8 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
       {/* Add Transaction Modal */}
       {showForm && (
         <div
+          role="dialog"
+          aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
           onClick={(e) => { if (e.target === e.currentTarget) handleCloseForm(); }}

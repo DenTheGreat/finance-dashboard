@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -7,6 +8,7 @@ import {
   Settings,
   Wallet,
   FileSpreadsheet,
+  Menu,
 } from 'lucide-react'
 import type { Currency, UserSettings } from '../types'
 import { useI18n } from '../i18n'
@@ -35,11 +37,26 @@ interface LayoutProps {
 
 export default function Layout({ settings, onUpdateSettings }: LayoutProps) {
   const { t, locale, setLocale } = useI18n()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
     <div className="flex min-h-screen bg-gray-950">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed top-0 left-0 h-screen w-64 bg-gray-900 flex flex-col">
+      <aside
+        className={[
+          'fixed inset-y-0 left-0 z-40 w-64 bg-gray-900 flex flex-col transform transition-transform',
+          'lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        ].join(' ')}
+      >
         {/* App title */}
         <div className="flex items-center gap-3 px-4 py-6">
           <Wallet className="text-primary-400 h-6 w-6 shrink-0" />
@@ -55,6 +72,7 @@ export default function Layout({ settings, onUpdateSettings }: LayoutProps) {
               key={to}
               to={to}
               end={to === '/'}
+              onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 [
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
@@ -111,8 +129,20 @@ export default function Layout({ settings, onUpdateSettings }: LayoutProps) {
         </div>
       </aside>
 
+      {/* Mobile top bar */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-20 flex items-center gap-3 px-4 py-3 bg-gray-900 border-b border-gray-800">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open menu"
+          className="text-gray-400 hover:text-gray-200 transition-colors"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+        <span className="text-white font-semibold text-lg">{t('layout.appTitle')}</span>
+      </div>
+
       {/* Main content */}
-      <main className="ml-64 flex-1 min-h-screen p-8">
+      <main className="lg:ml-64 flex-1 min-h-screen p-8 pt-20 lg:pt-8">
         <Outlet />
       </main>
     </div>

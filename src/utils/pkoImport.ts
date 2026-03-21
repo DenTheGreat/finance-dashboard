@@ -1,5 +1,4 @@
 import type { Currency, ExpenseCategory, IncomeCategory, CategoryRule } from '../types';
-import { loadCustomRules } from './customRules';
 
 // Known PKO BP CSV column headers (Polish)
 const PKO_COLUMNS = {
@@ -195,7 +194,6 @@ const CATEGORY_KEYWORDS: Array<[string, ExpenseCategory | IncomeCategory]> = [
   ['sklep zoologiczny', 'Shopping'],
   ['lite e-commerce', 'Shopping'],
   ['jmdif', 'Shopping'],
-  ['mcdonalds', 'Food'],
   ['ziko apteka', 'Healthcare'],
   ['orange polska', 'Utilities'],
   // Healthcare
@@ -266,19 +264,16 @@ function detectCategory(description: string, appRules?: CategoryRule[]): Expense
       }
     }
   }
-  // Then check localStorage custom rules (user-local overrides)
-  const customRules = loadCustomRules();
-  for (const rule of customRules) {
-    if (lower.includes(rule.keyword)) {
-      return rule.category as ExpenseCategory | IncomeCategory;
-    }
-  }
   for (const [keyword, category] of CATEGORY_KEYWORDS) {
     if (lower.includes(keyword)) {
       return category;
     }
   }
   return 'Other';
+}
+
+export function detectCategoryForDescription(description: string, appRules?: CategoryRule[]): ExpenseCategory | IncomeCategory {
+  return detectCategory(description, appRules);
 }
 
 function findColumnIndex(headers: string[], candidates: string[]): number {
@@ -304,7 +299,7 @@ function parsePKOAmount(raw: string): number {
   return parseFloat(cleaned);
 }
 
-function parseDate(raw: string): string {
+export function parseDate(raw: string): string {
   const trimmed = raw.trim();
   // Try YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;

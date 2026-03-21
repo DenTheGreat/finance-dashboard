@@ -66,6 +66,7 @@ export default function Dashboard({ data }: DashboardProps) {
     year,
     primaryCurrency,
     exchangeRate,
+    settings.exchangeRates,
   );
 
   // Savings advice
@@ -78,6 +79,7 @@ export default function Dashboard({ data }: DashboardProps) {
     year,
     primaryCurrency,
     exchangeRate,
+    settings.exchangeRates,
   );
 
   const pieData = expensesByCategory.map(({ category, amount, color }) => ({

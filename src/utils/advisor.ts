@@ -37,6 +37,7 @@ export function getMonthlyBreakdown(
   year: number,
   primaryCurrency: Currency,
   exchangeRate: number,
+  exchangeRates?: Record<string, number>,
 ): BudgetBreakdown {
   const monthTransactions = transactions.filter((t) => {
     const d = new Date(t.date);
@@ -51,7 +52,7 @@ export function getMonthlyBreakdown(
 
   for (const t of monthTransactions) {
     const rate = t.exchangeRateAtTime ?? exchangeRate;
-    const amount = convertCurrency(t.amount, t.currency, primaryCurrency, rate);
+    const amount = convertCurrency(t.amount, t.currency, primaryCurrency, rate, exchangeRates);
     if (t.type === 'income') {
       totalIncome += amount;
     } else {
@@ -158,6 +159,7 @@ export function getExpensesByCategory(
   year: number,
   primaryCurrency: Currency,
   exchangeRate: number,
+  exchangeRates?: Record<string, number>,
 ): { category: string; amount: number; color: string }[] {
   const monthExpenses = transactions.filter((t) => {
     const d = new Date(t.date);
@@ -167,7 +169,7 @@ export function getExpensesByCategory(
   const byCategory = new Map<string, number>();
   for (const t of monthExpenses) {
     const rate = t.exchangeRateAtTime ?? exchangeRate;
-    const amount = convertCurrency(t.amount, t.currency, primaryCurrency, rate);
+    const amount = convertCurrency(t.amount, t.currency, primaryCurrency, rate, exchangeRates);
     byCategory.set(t.category, (byCategory.get(t.category) || 0) + amount);
   }
 

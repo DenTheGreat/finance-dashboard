@@ -27,9 +27,12 @@ import {
   updateSettings,
   exportData,
   importData,
+  deleteTransactions,
+  updateTransactionsCategory,
 } from './store';
 import { fetchAllRates } from './utils/exchangeRate';
 import { generateSeedData } from './utils/seed';
+import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
   const [data, setData] = useState(loadData);
@@ -77,6 +80,14 @@ export default function App() {
 
   const handleUpdateTransactionCategory = useCallback((id: string, category: string) => {
     setData((prev) => updateTransactionCategory(prev, id, category));
+  }, []);
+
+  const handleBulkDelete = useCallback((ids: Set<string>) => {
+    setData((prev) => deleteTransactions(prev, ids));
+  }, []);
+
+  const handleBulkUpdateCategory = useCallback((ids: Set<string>, category: string) => {
+    setData((prev) => updateTransactionsCategory(prev, ids, category));
   }, []);
 
   const handleAddDebt = useCallback((debt: Omit<Debt, 'id'>) => {
@@ -139,6 +150,7 @@ export default function App() {
 
   return (
     <I18nContext.Provider value={i18n}>
+    <ErrorBoundary>
     <BrowserRouter>
       <Routes>
         <Route element={<Layout settings={data.settings} onUpdateSettings={handleUpdateSettings} />}>
@@ -152,6 +164,8 @@ export default function App() {
                 onDelete={handleDeleteTransaction}
                 onUpdateCategory={handleUpdateTransactionCategory}
                 onAddRule={handleAddCategoryRule}
+                onBulkDelete={handleBulkDelete}
+                onBulkUpdateCategory={handleBulkUpdateCategory}
               />
             }
           />
@@ -204,6 +218,7 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </ErrorBoundary>
     </I18nContext.Provider>
   );
 }
