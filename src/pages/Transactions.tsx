@@ -24,6 +24,24 @@ import { convertCurrency } from '../utils/currency';
 import { useI18n } from '../i18n';
 
 // ---------------------------------------------------------------------------
+// Hooks
+// ---------------------------------------------------------------------------
+
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < breakpoint : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    setIsMobile(mq.matches);
+    return () => mq.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
+// ---------------------------------------------------------------------------
 // Types & constants
 // ---------------------------------------------------------------------------
 
@@ -68,7 +86,7 @@ const INPUT_CLASS =
 
 // Shared grid template for aligned columns:
 // checkbox(36px) | date(110px) | description(1fr) | category(140px) | amount(120px) | saldo(100px) | cur(50px) | type(80px) | del(36px)
-const GRID_COLS = 'grid grid-cols-[36px_110px_1fr_140px_120px_100px_50px_80px_36px] items-center';
+const GRID_COLS = 'grid grid-cols-[36px_110px_1fr_140px_120px_100px_50px_80px_36px] items-center min-h-[44px]';
 
 const ALL_CATEGORIES = [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
 
@@ -315,6 +333,8 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
   // --- Group by ---
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const isMobile = useIsMobile();
 
   // --- Search bar ---
   const [searchQuery, setSearchQuery] = useState('');
@@ -602,7 +622,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
   const rowVirtualizer = useVirtualizer({
     count: virtualItemList.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 44,
+    estimateSize: () => 48,
     overscan: 10,
   });
 
@@ -675,7 +695,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
     return (
       <div className={`${GRID_COLS} border-b border-gray-800 hover:bg-gray-800/40 transition-colors group`}>
         {/* Checkbox */}
-        <div className="px-3 py-2">
+        <div className="px-3 py-2 self-center">
           <input
             type="checkbox"
             checked={selected.has(tx.id)}
@@ -706,24 +726,24 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
           </select>
         </div>
         {/* Amount */}
-        <div className="px-3 py-2 text-right whitespace-nowrap">
-          <span className={`font-semibold text-sm ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
+        <div className="px-3 py-2 text-right whitespace-nowrap leading-tight">
+          <div className={`font-semibold text-sm ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
             {isIncome ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
-          </span>
-          {tx.currency !== data.settings.primaryCurrency && (
-            <div className="text-xs text-gray-500">
-              ~{formatCurrency(
-                convertCurrency(
-                  tx.amount,
-                  tx.currency,
+          </div>
+          <div className="text-xs text-gray-500 h-4">
+            {tx.currency !== data.settings.primaryCurrency
+              ? `≈${formatCurrency(
+                  convertCurrency(
+                    tx.amount,
+                    tx.currency,
+                    data.settings.primaryCurrency,
+                    tx.exchangeRateAtTime ?? data.settings.exchangeRate,
+                    data.settings.exchangeRates,
+                  ),
                   data.settings.primaryCurrency,
-                  tx.exchangeRateAtTime ?? data.settings.exchangeRate,
-                  data.settings.exchangeRates,
-                ),
-                data.settings.primaryCurrency,
-              )}
-            </div>
-          )}
+                ).replace(/\s/g, '\u00A0')}`
+              : '\u00A0'}
+          </div>
         </div>
         {/* Saldo */}
         <div className="px-3 py-2 text-right whitespace-nowrap">
@@ -748,6 +768,63 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
           >
             <Trash2 size={14} />
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Mobile card renderer ---
+  function TxCard({ tx }: { tx: Transaction }) {
+    const isIncome = tx.type === 'income';
+    const color = CATEGORY_COLORS[tx.category] ?? '#64748b';
+    const cats = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+
+    return (
+      <div className="border-b border-gray-800 p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <input
+              type="checkbox"
+              checked={selected.has(tx.id)}
+              onChange={() => toggleSelect(tx.id)}
+              className="accent-primary-500 shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-sm text-gray-200 truncate">{tx.description || <span className="text-gray-500 italic">{t('transactions.noDescription')}</span>}</p>
+              <p className="text-xs text-gray-500">{formatDate(tx.date)}</p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <p className={`text-sm font-semibold ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
+              {isIncome ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
+            </p>
+            {tx.currency !== data.settings.primaryCurrency && (
+              <p className="text-xs text-gray-500">
+                ≈{formatCurrency(
+                  convertCurrency(tx.amount, tx.currency, data.settings.primaryCurrency, tx.exchangeRateAtTime ?? data.settings.exchangeRate, data.settings.exchangeRates),
+                  data.settings.primaryCurrency,
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={tx.category}
+            onChange={(e) => onUpdateCategory(tx.id, e.target.value)}
+            className="text-xs font-medium px-2 py-0.5 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-500"
+            style={{ backgroundColor: color + '30', color }}
+          >
+            {cats.map((c) => (
+              <option key={c} value={c} style={{ backgroundColor: '#1f2937', color: '#e5e7eb' }}>{tc(c)}</option>
+            ))}
+          </select>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isIncome ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}`}>
+            {t(`transactions.${tx.type}`)}
+          </span>
+          <span className="text-xs text-gray-500 ml-auto">
+            {t('transactions.saldo')}: {(saldoMap.get(tx.id) ?? 0).toFixed(2)}
+          </span>
         </div>
       </div>
     );
@@ -826,9 +903,9 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
       {/* Table */}
       <div className="rounded-xl border border-gray-800 overflow-x-auto">
-        <div className="min-w-[700px]">
-          {/* Header */}
-          <div className={`${GRID_COLS} bg-gray-900 border-b border-gray-700`}>
+        <div className={isMobile ? '' : 'min-w-[700px]'}>
+          {/* Header — desktop only */}
+          {!isMobile && <div className={`${GRID_COLS} bg-gray-900 border-b border-gray-700`}>
             <div className="px-3 py-2.5">
               <input
                 type="checkbox"
@@ -845,7 +922,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
             <ColHeader col="currency" label={t('transactions.currency')} />
             <ColHeader col="type" label={t('transactions.type')} />
             <div className="px-3 py-2.5" />
-          </div>
+          </div>}
 
           {/* Virtualized body */}
           {filtered.length === 0 ? (
@@ -903,7 +980,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
                           </div>
                         );
                       })() : (
-                        <TxRow tx={item.tx} />
+                        isMobile ? <TxCard tx={item.tx} /> : <TxRow tx={item.tx} />
                       )}
                     </div>
                   );
@@ -914,43 +991,71 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
           {/* Footer totals */}
           {filtered.length > 0 && (
-            <div className={`${GRID_COLS} bg-gray-900 border-t-2 border-gray-700`}>
-              <div className="px-3 py-2.5 col-span-3 text-xs text-gray-400 font-medium">
-                {t('transactions.totals')} ({filtered.length} {filtered.length !== 1 ? t('transactions.transactions') : t('transactions.transaction')})
+            isMobile ? (
+              <div className="bg-gray-900 border-t-2 border-gray-700 p-3 space-y-2">
+                <p className="text-xs text-gray-400 font-medium">
+                  {t('transactions.totals')} ({filtered.length} {filtered.length !== 1 ? t('transactions.transactions') : t('transactions.transaction')})
+                </p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-green-400">+{summary.income.toFixed(2)}</span>
+                  <span className="text-red-400">-{summary.expenses.toFixed(2)}</span>
+                  <span className={`font-semibold ${summary.net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                    = {summary.net >= 0 ? '+' : ''}{summary.net.toFixed(2)}
+                  </span>
+                </div>
+                {Object.entries(summary.byCurrency).map(([cur, totals]) => {
+                  const net = totals.income - totals.expenses;
+                  return (
+                    <div key={cur} className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-500 w-8">{cur}</span>
+                      <span className="text-green-400">+{totals.income.toFixed(2)}</span>
+                      <span className="text-red-400">-{totals.expenses.toFixed(2)}</span>
+                      <span className={`font-medium ${net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                        = {net >= 0 ? '+' : ''}{net.toFixed(2)}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="px-3 py-2.5" />
-              <div className="px-3 py-2.5 text-right">
-                <div className="text-xs space-y-0.5">
-                  <div className="text-green-400">+{summary.income.toFixed(2)}</div>
-                  <div className="text-red-400">-{summary.expenses.toFixed(2)}</div>
-                  <div className={`font-semibold border-t border-gray-700 pt-0.5 ${summary.net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+            ) : (
+              <div className={`${GRID_COLS} bg-gray-900 border-t-2 border-gray-700`}>
+                <div className="px-3 py-2.5 col-span-3 text-xs text-gray-400 font-medium">
+                  {t('transactions.totals')} ({filtered.length} {filtered.length !== 1 ? t('transactions.transactions') : t('transactions.transaction')})
+                </div>
+                <div className="px-3 py-2.5" />
+                <div className="px-3 py-2.5 text-right">
+                  <div className="text-xs space-y-0.5">
+                    <div className="text-green-400">+{summary.income.toFixed(2)}</div>
+                    <div className="text-red-400">-{summary.expenses.toFixed(2)}</div>
+                    <div className={`font-semibold border-t border-gray-700 pt-0.5 ${summary.net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                      {summary.net >= 0 ? '+' : ''}{summary.net.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+                <div className="px-3 py-2.5 text-right">
+                  <div className={`text-xs font-semibold ${summary.net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
                     {summary.net >= 0 ? '+' : ''}{summary.net.toFixed(2)}
                   </div>
                 </div>
-              </div>
-              <div className="px-3 py-2.5 text-right">
-                <div className={`text-xs font-semibold ${summary.net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                  {summary.net >= 0 ? '+' : ''}{summary.net.toFixed(2)}
+                <div className="px-3 py-2.5 col-span-3">
+                  <div className="text-xs space-y-0.5">
+                    {Object.entries(summary.byCurrency).map(([cur, totals]) => {
+                      const net = totals.income - totals.expenses;
+                      return (
+                        <div key={cur} className="flex items-center gap-2">
+                          <span className="text-gray-500 w-8">{cur}</span>
+                          <span className="text-green-400">+{totals.income.toFixed(2)}</span>
+                          <span className="text-red-400">-{totals.expenses.toFixed(2)}</span>
+                          <span className={`font-medium ${net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                            = {net >= 0 ? '+' : ''}{net.toFixed(2)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-              <div className="px-3 py-2.5 col-span-3">
-                <div className="text-xs space-y-0.5">
-                  {Object.entries(summary.byCurrency).map(([cur, totals]) => {
-                    const net = totals.income - totals.expenses;
-                    return (
-                      <div key={cur} className="flex items-center gap-2">
-                        <span className="text-gray-500 w-8">{cur}</span>
-                        <span className="text-green-400">+{totals.income.toFixed(2)}</span>
-                        <span className="text-red-400">-{totals.expenses.toFixed(2)}</span>
-                        <span className={`font-medium ${net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                          = {net >= 0 ? '+' : ''}{net.toFixed(2)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            )
           )}
         </div>
       </div>

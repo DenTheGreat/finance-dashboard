@@ -23,7 +23,7 @@ import {
   type ParseResult,
   type ParsedBankTransaction,
   type ColumnMapping,
-} from '../utils/pkoImport';
+} from '../utils/bankImport';
 import { useI18n } from '../i18n';
 
 interface BankImportProps {

@@ -11,6 +11,7 @@ const ru: Record<string, string> = {
   'layout.appTitle': 'Финансовая панель',
   'layout.primaryCurrency': 'Основная валюта',
   'layout.language': 'Язык',
+  'layout.theme': 'Тема',
 
   // Dashboard
   'dashboard.title': 'Панель',

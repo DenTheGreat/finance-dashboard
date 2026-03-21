@@ -9,6 +9,8 @@ import {
   Wallet,
   FileSpreadsheet,
   Menu,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import type { Currency, UserSettings } from '../types'
 import { useI18n } from '../i18n'
@@ -106,6 +108,22 @@ export default function Layout({ settings, onUpdateSettings }: LayoutProps) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Theme toggle */}
+        <div className="px-4 py-3 border-t border-gray-800">
+          <p className="text-xs text-gray-500 mb-2">{t('layout.theme')}</p>
+          <button
+            onClick={() => onUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
+            className="flex items-center gap-2 w-full py-1.5 px-2 rounded-md text-xs font-semibold bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 transition-colors"
+            aria-label={t('layout.theme')}
+          >
+            {settings.theme === 'light' ? (
+              <><Moon className="h-3.5 w-3.5" /> Dark</>
+            ) : (
+              <><Sun className="h-3.5 w-3.5" /> Light</>
+            )}
+          </button>
         </div>
 
         {/* Currency switcher */}

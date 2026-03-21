@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCSV } from '../pkoImport';
+import { parseCSV } from '../bankImport';
 
 describe('parseCSV', () => {
   describe('delimiter detection', () => {

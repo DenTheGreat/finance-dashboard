@@ -148,6 +148,16 @@ export default function App() {
   }, []);
   const i18n = useMemo(() => createI18nValue(locale, setLocale), [locale, setLocale]);
 
+  // Apply dark/light class to document root
+  useEffect(() => {
+    const theme = data.settings.theme ?? 'dark';
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [data.settings.theme]);
+
   return (
     <I18nContext.Provider value={i18n}>
     <ErrorBoundary>

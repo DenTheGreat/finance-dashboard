@@ -140,7 +140,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
       </div>
 
       {/* Savings Advisor Panel */}
-      <div className="bg-gradient-to-r from-primary-900/50 to-primary-800/30 rounded-xl p-6 border border-primary-700/30">
+      <div className="bg-gradient-to-r from-primary-900/50 to-primary-800/30 rounded-xl p-4 sm:p-6 border border-primary-700/30 overflow-hidden">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="text-white font-semibold text-lg">{t('dashboard.savingsAdvisor')}</h2>
@@ -173,7 +173,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
         </div>
 
         {/* Legend -- actual vs recommended */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5 text-center sm:text-left">
           {/* Needs */}
           <div className="space-y-1">
             <div className="flex items-center gap-1.5">

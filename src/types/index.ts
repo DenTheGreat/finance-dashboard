@@ -84,6 +84,7 @@ export interface UserSettings {
   autoExchangeRate: boolean; // fetch live rate on load
   monthlyBudget?: number;
   locale?: 'en' | 'uk' | 'ru';
+  theme?: 'dark' | 'light';
 }
 
 export interface CategoryRule {

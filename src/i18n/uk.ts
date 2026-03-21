@@ -11,6 +11,7 @@ const uk: Record<string, string> = {
   'layout.appTitle': '\u0424\u0456\u043D\u0430\u043D\u0441\u043E\u0432\u0430 \u043F\u0430\u043D\u0435\u043B\u044C',
   'layout.primaryCurrency': '\u041E\u0441\u043D\u043E\u0432\u043D\u0430 \u0432\u0430\u043B\u044E\u0442\u0430',
   'layout.language': '\u041C\u043E\u0432\u0430',
+  'layout.theme': '\u0422\u0435\u043C\u0430',
 
   // Dashboard
   'dashboard.title': '\u041F\u0430\u043D\u0435\u043B\u044C',

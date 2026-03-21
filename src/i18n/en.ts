@@ -11,6 +11,7 @@ const en: Record<string, string> = {
   'layout.appTitle': 'Finance Dashboard',
   'layout.primaryCurrency': 'Primary Currency',
   'layout.language': 'Language',
+  'layout.theme': 'Theme',
 
   // Dashboard
   'dashboard.title': 'Dashboard',
