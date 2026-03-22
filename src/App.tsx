@@ -6,7 +6,6 @@ import Transactions from './pages/Transactions';
 import Debts from './pages/Debts';
 import Savings from './pages/Savings';
 import Settings from './pages/Settings';
-import BankImport from './pages/BankImport';
 import type { Transaction, Debt, SavingsGoal, UserSettings } from './types';
 import { I18nContext, createI18nValue } from './i18n';
 import type { Locale } from './i18n';
@@ -15,6 +14,7 @@ import {
   addTransaction,
   deleteTransaction,
   updateTransactionCategory,
+  updateTransactionFields,
   clearTransactions,
   deduplicateTransactions,
   addCategoryRule,
@@ -88,6 +88,10 @@ export default function App() {
 
   const handleBulkUpdateCategory = useCallback((ids: Set<string>, category: string) => {
     setData((prev) => updateTransactionsCategory(prev, ids, category));
+  }, []);
+
+  const handleUpdateTransaction = useCallback((id: string, updates: Partial<import('./types').Transaction>) => {
+    setData((prev) => updateTransactionFields(prev, id, updates));
   }, []);
 
   const handleAddDebt = useCallback((debt: Omit<Debt, 'id'>) => {
@@ -173,6 +177,7 @@ export default function App() {
                 onAdd={handleAddTransaction}
                 onDelete={handleDeleteTransaction}
                 onUpdateCategory={handleUpdateTransactionCategory}
+                onUpdate={handleUpdateTransaction}
                 onAddRule={handleAddCategoryRule}
                 onBulkDelete={handleBulkDelete}
                 onBulkUpdateCategory={handleBulkUpdateCategory}
@@ -202,19 +207,6 @@ export default function App() {
             }
           />
           <Route
-            path="/import"
-            element={
-              <BankImport
-                data={data}
-                onAdd={handleAddTransaction}
-                onClear={handleClearTransactions}
-                onDeduplicate={handleDeduplicateTransactions}
-                onAddRule={handleAddCategoryRule}
-                onUpdateSettings={handleUpdateSettings}
-              />
-            }
-          />
-          <Route
             path="/settings"
             element={
               <Settings
@@ -223,6 +215,10 @@ export default function App() {
                 onExport={handleExport}
                 onImport={handleImport}
                 onLoadSeed={handleLoadSeed}
+                onClear={handleClearTransactions}
+                onDeduplicate={handleDeduplicateTransactions}
+                onAddTransaction={handleAddTransaction}
+                onAddRule={handleAddCategoryRule}
               />
             }
           />

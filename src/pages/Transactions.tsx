@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronRight,
   Check,
+  Download,
 } from 'lucide-react';
 import type { AppData, Transaction } from '../types';
 import {
@@ -50,6 +51,7 @@ interface TransactionsProps {
   onAdd: (tx: Omit<Transaction, 'id'>) => void;
   onDelete: (id: string) => void;
   onUpdateCategory: (id: string, category: string) => void;
+  onUpdate: (id: string, updates: Partial<Transaction>) => void;
   onAddRule: (keyword: string, category: string) => void;
   onBulkDelete: (ids: Set<string>) => void;
   onBulkUpdateCategory: (ids: Set<string>, category: string) => void;
@@ -320,7 +322,7 @@ function FilterDropdown({ column, filters, setFilters, transactions, active }: F
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, onAddRule, onBulkDelete, onBulkUpdateCategory }: TransactionsProps) {
+export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, onUpdate, onAddRule, onBulkDelete, onBulkUpdateCategory }: TransactionsProps) {
   const { t, tc, formatDate, formatCurrency } = useI18n();
 
   // --- Sort state ---
@@ -343,6 +345,10 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkCategory, setBulkCategory] = useState<string>('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // --- Detail panel ---
+  const [selectedTx, setSelectedTx] = useState<string | null>(null);
+  const [notesInput, setNotesInput] = useState('');
 
   // --- Add form ---
   const [showForm, setShowForm] = useState(false);
@@ -391,6 +397,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
       category: formCategory as Transaction['category'],
       description: formDescription.trim(),
       date: formDate,
+      source: 'manual' as const,
     };
     if (formCurrency === 'PLN') {
       const rate = parseFloat(formExchangeRate);
@@ -664,6 +671,51 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
     setConfirmDelete(false);
   }, [confirmDelete, selected, onBulkDelete]);
 
+  // --- Detail panel helpers ---
+  function openDetail(id: string) {
+    const tx = data.transactions.find((t) => t.id === id);
+    setSelectedTx(id);
+    setNotesInput(tx?.notes ?? '');
+  }
+
+  function closeDetail() {
+    setSelectedTx(null);
+    setNotesInput('');
+  }
+
+  function handleSaveNotes() {
+    if (!selectedTx) return;
+    onUpdate(selectedTx, { notes: notesInput });
+  }
+
+  // --- CSV export ---
+  function handleExportCsv() {
+    const rows: string[] = [];
+    rows.push(['Date', 'Description', 'Category', 'Amount', 'Currency', 'Type', 'Counterparty', 'Source', 'Notes'].join(','));
+    for (const tx of filtered) {
+      const esc = (v: string | undefined) => `"${(v ?? '').replace(/"/g, '""')}"`;
+      rows.push([
+        tx.date,
+        esc(tx.description),
+        esc(tx.category),
+        tx.amount.toFixed(2),
+        tx.currency,
+        tx.type,
+        esc(tx.counterparty),
+        esc(tx.source),
+        esc(tx.notes),
+      ].join(','));
+    }
+    const csv = rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   // --- Column header helper ---
   function ColHeader({ col, label, className = '' }: { col: SortCol; label: string; className?: string }) {
     return (
@@ -693,9 +745,12 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
     const cats = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
     return (
-      <div className={`${GRID_COLS} border-b border-gray-800 hover:bg-gray-800/40 transition-colors group`}>
+      <div
+        className={`${GRID_COLS} border-b border-gray-800 hover:bg-gray-800/40 transition-colors group cursor-pointer`}
+        onClick={() => openDetail(tx.id)}
+      >
         {/* Checkbox */}
-        <div className="px-3 py-2 self-center">
+        <div className="px-3 py-2 self-center" onClick={(e) => e.stopPropagation()}>
           <input
             type="checkbox"
             checked={selected.has(tx.id)}
@@ -710,7 +765,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
           {tx.description || <span className="text-gray-500 italic">{t('transactions.noDescription')}</span>}
         </div>
         {/* Category -- inline dropdown */}
-        <div className="px-3 py-2">
+        <div className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
           <select
             value={tx.category}
             onChange={(e) => onUpdateCategory(tx.id, e.target.value)}
@@ -760,7 +815,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
           </span>
         </div>
         {/* Delete */}
-        <div className="px-3 py-2">
+        <div className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => onDelete(tx.id)}
             className="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-gray-700 transition-colors opacity-0 group-hover:opacity-100"
@@ -780,13 +835,14 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
     const cats = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
     return (
-      <div className="border-b border-gray-800 p-3 space-y-2">
+      <div className="border-b border-gray-800 p-3 space-y-2 cursor-pointer" onClick={() => openDetail(tx.id)}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <input
               type="checkbox"
               checked={selected.has(tx.id)}
               onChange={() => toggleSelect(tx.id)}
+              onClick={(e) => e.stopPropagation()}
               className="accent-primary-500 shrink-0"
             />
             <div className="min-w-0">
@@ -808,10 +864,11 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
           <select
             value={tx.category}
             onChange={(e) => onUpdateCategory(tx.id, e.target.value)}
+            onClick={(e) => e.stopPropagation()}
             className="text-xs font-medium px-2 py-0.5 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-500"
             style={{ backgroundColor: color + '30', color }}
           >
@@ -845,7 +902,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
         >
           <Plus size={16} />
           <span className="hidden xs:inline">{t('transactions.addTransaction')}</span>
-          <span className="xs:hidden">{t('transactions.add') || t('transactions.addTransaction')}</span>
+          <span className="xs:hidden">{t('transactions.add')}</span>
         </button>
       </div>
 
@@ -885,6 +942,16 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
             <option value="month">{t('transactions.groupMonth')}</option>
           </select>
         </div>
+
+        {/* Export CSV */}
+        <button
+          onClick={handleExportCsv}
+          title={t('transactions.exportCsv')}
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 rounded-lg transition-colors"
+        >
+          <Download size={13} />
+          <span className="hidden sm:inline">{t('transactions.exportCsv')}</span>
+        </button>
 
         {/* Clear all filters */}
         {hasAnyFilter && (
@@ -1123,6 +1190,139 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
           </button>
         </div>
       )}
+
+      {/* Transaction Detail Panel */}
+      {selectedTx && (() => {
+        const tx = data.transactions.find((t) => t.id === selectedTx);
+        if (!tx) return null;
+        const isIncome = tx.type === 'income';
+        const cats = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+        const color = CATEGORY_COLORS[tx.category] ?? '#64748b';
+        const saldo = saldoMap.get(tx.id) ?? 0;
+        const convertedAmount = tx.currency !== data.settings.primaryCurrency
+          ? convertCurrency(tx.amount, tx.currency, data.settings.primaryCurrency, tx.exchangeRateAtTime ?? data.settings.exchangeRate, data.settings.exchangeRates)
+          : null;
+
+        return (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 z-40 bg-black/50"
+              onClick={closeDetail}
+            />
+            {/* Panel — slide-over on desktop, bottom sheet on mobile */}
+            <div className={`fixed z-50 bg-gray-900 border border-gray-700 shadow-2xl overflow-y-auto ${
+              isMobile
+                ? 'inset-x-0 bottom-0 rounded-t-2xl max-h-[85vh]'
+                : 'top-0 right-0 h-full w-96'
+            }`}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700 sticky top-0 bg-gray-900 z-10">
+                <h2 className="text-base font-semibold text-gray-100">{t('transactions.details')}</h2>
+                <button onClick={closeDetail} className="text-gray-400 hover:text-gray-100 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="px-5 py-4 space-y-4">
+                {/* Date & Description */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{t('transactions.date')}</span>
+                    <span className="text-gray-200">{formatDate(tx.date)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm gap-4">
+                    <span className="text-gray-500 shrink-0">{t('transactions.description')}</span>
+                    <span className="text-gray-200 text-right">{tx.description || <span className="text-gray-500 italic">{t('transactions.noDescription')}</span>}</span>
+                  </div>
+                  <div className="flex justify-between text-sm gap-4">
+                    <span className="text-gray-500 shrink-0">{t('transactions.counterparty')}</span>
+                    <span className="text-gray-200 text-right">{tx.counterparty || t('transactions.noCounterparty')}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{t('transactions.source')}</span>
+                    <span className="text-gray-200">{tx.source ?? 'manual'}</span>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-800" />
+
+                {/* Amount */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{t('transactions.amount')}</span>
+                    <span className={`font-semibold ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
+                      {isIncome ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
+                    </span>
+                  </div>
+                  {convertedAmount !== null && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500"></span>
+                      <span className="text-gray-400">≈{formatCurrency(convertedAmount, data.settings.primaryCurrency)}</span>
+                    </div>
+                  )}
+                  {tx.exchangeRateAtTime && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">{t('transactions.exchangeRate')}</span>
+                      <span className="text-gray-400">{tx.exchangeRateAtTime}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-gray-800" />
+
+                {/* Category & Type */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500">{t('transactions.category')}</span>
+                    <select
+                      value={tx.category}
+                      onChange={(e) => onUpdateCategory(tx.id, e.target.value)}
+                      className="text-xs font-medium px-2 py-0.5 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      style={{ backgroundColor: color + '30', color }}
+                    >
+                      {cats.map((c) => (
+                        <option key={c} value={c} style={{ backgroundColor: '#1f2937', color: '#e5e7eb' }}>{tc(c)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{t('transactions.type')}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isIncome ? 'bg-green-900/40 text-green-400' : 'bg-red-900/40 text-red-400'}`}>
+                      {t(`transactions.${tx.type}`)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{t('transactions.saldo')}</span>
+                    <span className={`font-medium ${saldo >= 0 ? 'text-gray-300' : 'text-red-400'}`}>
+                      {saldo >= 0 ? '+' : ''}{saldo.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-800" />
+
+                {/* Notes */}
+                <div className="space-y-2">
+                  <label className="block text-sm text-gray-500">{t('transactions.notes')}</label>
+                  <textarea
+                    value={notesInput}
+                    onChange={(e) => setNotesInput(e.target.value)}
+                    rows={3}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  />
+                  <button
+                    onClick={handleSaveNotes}
+                    className="w-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                  >
+                    {t('transactions.saveNotes')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Add Transaction Modal */}
       {showForm && (

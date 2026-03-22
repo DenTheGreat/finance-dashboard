@@ -7,8 +7,6 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowLeft,
-  Trash2,
-  Filter,
 } from 'lucide-react';
 import type { AppData, Transaction } from '../types';
 import {
@@ -18,6 +16,8 @@ import {
 } from '../types';
 import {
   parseCSV,
+  detectBank,
+  BANK_ENCODINGS,
   parseDate,
   detectCategoryForDescription,
   type ParseResult,
@@ -29,8 +29,6 @@ import { useI18n } from '../i18n';
 interface BankImportProps {
   data: AppData;
   onAdd: (tx: Omit<Transaction, 'id'>) => void;
-  onClear: () => void;
-  onDeduplicate: () => number;
   onAddRule: (keyword: string, category: string) => void;
   onUpdateSettings: (s: Partial<import('../types').UserSettings>) => void;
 }
@@ -43,7 +41,7 @@ const INPUT_CLASS =
 const SELECT_CLASS =
   'bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-xs';
 
-export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddRule, onUpdateSettings }: BankImportProps) {
+export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }: BankImportProps) {
   const { t, tc, formatCurrency } = useI18n();
   const [step, setStep] = useState<Step>(1);
   const [dragging, setDragging] = useState(false);
@@ -109,48 +107,31 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
     setParseError(null);
     setFileName(file.name);
 
-    // Try UTF-8 first (Monobank uses UTF-8)
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result;
-      if (typeof text !== 'string') {
+    // Step 1: Quick-read with ASCII-safe encoding to detect bank format from headers
+    const detector = new FileReader();
+    detector.onload = (e) => {
+      const probe = e.target?.result;
+      if (typeof probe !== 'string') {
         setParseError(t('import.couldNotRead'));
         return;
       }
-      const result = parseCSV(text, data.categoryRules);
-      if (result.detectedBank !== 'unknown' && result.transactions.length > 0) {
-        handleParseResult(result);
-        return;
-      }
-      // Try windows-1251 (PrivatBank) then windows-1250 (PKO) as fallback
-      const reader2 = new FileReader();
-      reader2.onload = (e2) => {
-        const text2 = e2.target?.result;
-        if (typeof text2 !== 'string') {
+      const bank = detectBank(probe);
+      const encoding = BANK_ENCODINGS[bank];
+
+      // Step 2: Re-read with the correct encoding and parse
+      const reader = new FileReader();
+      reader.onload = (e2) => {
+        const text = e2.target?.result;
+        if (typeof text !== 'string') {
           setParseError(t('import.couldNotRead'));
           return;
         }
-        const result2 = parseCSV(text2, data.categoryRules);
-        if (result2.detectedBank !== 'unknown' && result2.transactions.length > 0) {
-          handleParseResult(result2);
-          return;
-        }
-        // Try windows-1250 (PKO) as final fallback
-        const reader3 = new FileReader();
-        reader3.onload = (e3) => {
-          const text3 = e3.target?.result;
-          if (typeof text3 !== 'string') {
-            setParseError(t('import.couldNotRead'));
-            return;
-          }
-          const result3 = parseCSV(text3, data.categoryRules);
-          handleParseResult(result3);
-        };
-        reader3.readAsText(file, 'windows-1250');
+        const result = parseCSV(text, data.categoryRules);
+        handleParseResult(result);
       };
-      reader2.readAsText(file, 'windows-1251');
+      reader.readAsText(file, encoding);
     };
-    reader.readAsText(file, 'UTF-8');
+    detector.readAsText(file, 'ascii');
   }
 
   // ---- Drag & drop handlers ----
@@ -219,6 +200,7 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
         }
       }
 
+      const bankSource = parseResult.detectedBank !== 'unknown' ? parseResult.detectedBank : 'import';
       const newTx: Omit<Transaction, 'id'> = {
         type,
         amount: tx.amount,
@@ -226,6 +208,8 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
         category,
         description: tx.description,
         date: tx.date,
+        source: bankSource as Transaction['source'],
+        counterparty: tx.counterparty || undefined,
       };
 
       if (tx.currency === 'PLN') {
@@ -359,42 +343,6 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
             </div>
           )}
 
-          {data.transactions.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-800 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <p className="text-sm text-gray-400">
-                  {t('import.transactionsStored', { count: String(data.transactions.length), plural: data.transactions.length !== 1 ? 's' : '' })}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      const removed = onDeduplicate();
-                      if (removed > 0) {
-                        alert(t('import.removedDuplicates', { count: String(removed), plural: removed !== 1 ? 's' : '' }));
-                      } else {
-                        alert(t('import.noDuplicates'));
-                      }
-                    }}
-                    className="flex items-center gap-2 bg-yellow-900/40 hover:bg-yellow-900/60 text-yellow-400 hover:text-yellow-300 font-medium px-4 py-2 rounded-lg transition-colors text-sm border border-yellow-800"
-                  >
-                    <Filter className="h-4 w-4" />
-                    {t('import.deduplicate')}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm(t('import.clearConfirm', { count: String(data.transactions.length) }))) {
-                        onClear();
-                      }
-                    }}
-                    className="flex items-center gap-2 bg-red-900/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 font-medium px-4 py-2 rounded-lg transition-colors text-sm border border-red-800"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t('import.clearAll')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </section>
       )}
 

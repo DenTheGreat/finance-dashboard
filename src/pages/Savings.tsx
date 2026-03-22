@@ -136,7 +136,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
         >
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">{t('savings.addGoal')}</span>
-          <span className="sm:hidden">{t('common.add') || t('savings.addGoal')}</span>
+          <span className="sm:hidden">{t('common.add')}</span>
         </button>
       </div>
 

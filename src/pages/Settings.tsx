@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
-import { Settings as SettingsIcon, Download, Upload, Info, RefreshCw, Database } from 'lucide-react';
+import { Settings as SettingsIcon, Download, Upload, Info, RefreshCw, Database, Trash2, Filter } from 'lucide-react';
 import { fetchAllRates } from '../utils/exchangeRate';
-import type { AppData, UserSettings } from '../types';
+import type { AppData, UserSettings, Transaction } from '../types';
 import { useI18n } from '../i18n';
 import type { Locale } from '../i18n';
+import BankImport from './BankImport';
 
 interface SettingsProps {
   data: AppData;
@@ -11,6 +12,10 @@ interface SettingsProps {
   onExport: () => void;
   onImport: (json: string) => void;
   onLoadSeed: () => void;
+  onClear: () => void;
+  onDeduplicate: () => number;
+  onAddTransaction: (tx: Omit<Transaction, 'id'>) => void;
+  onAddRule: (keyword: string, category: string) => void;
 }
 
 const inputClass =
@@ -22,6 +27,10 @@ export default function Settings({
   onExport,
   onImport,
   onLoadSeed,
+  onClear,
+  onDeduplicate,
+  onAddTransaction,
+  onAddRule,
 }: SettingsProps) {
   const { t, locale, setLocale } = useI18n();
   const { settings } = data;
@@ -291,6 +300,14 @@ export default function Settings({
         </button>
       </section>
 
+      {/* Bank Import */}
+      <BankImport
+        data={data}
+        onAdd={onAddTransaction}
+        onAddRule={onAddRule}
+        onUpdateSettings={onUpdateSettings}
+      />
+
       {/* Data Management */}
       <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-4 sm:space-y-5">
         <h2 className="text-lg font-semibold text-white">{t('settings.dataManagement')}</h2>
@@ -354,6 +371,47 @@ export default function Settings({
             </p>
           )}
         </div>
+
+        {data.transactions.length > 0 && (
+          <>
+            <hr className="border-gray-800" />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <p className="text-sm text-gray-400">
+                  {t('import.transactionsStored', { count: String(data.transactions.length), plural: data.transactions.length !== 1 ? 's' : '' })}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const removed = onDeduplicate();
+                      if (removed > 0) {
+                        alert(t('import.removedDuplicates', { count: String(removed), plural: removed !== 1 ? 's' : '' }));
+                      } else {
+                        alert(t('import.noDuplicates'));
+                      }
+                    }}
+                    className="flex items-center gap-2 bg-yellow-900/40 hover:bg-yellow-900/60 text-yellow-400 hover:text-yellow-300 font-medium px-4 py-2 rounded-lg transition-colors text-sm border border-yellow-800"
+                  >
+                    <Filter className="h-4 w-4" />
+                    {t('import.deduplicate')}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(t('import.clearConfirm', { count: String(data.transactions.length) }))) {
+                        onClear();
+                      }
+                    }}
+                    className="flex items-center gap-2 bg-red-900/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 font-medium px-4 py-2 rounded-lg transition-colors text-sm border border-red-800"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {t('import.clearAll')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </section>
 
       {/* Demo Data */}

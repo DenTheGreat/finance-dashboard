@@ -112,7 +112,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
         >
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">{t('debts.addDebt')}</span>
-          <span className="sm:hidden">{t('common.add') || t('debts.addDebt')}</span>
+          <span className="sm:hidden">{t('common.add')}</span>
         </button>
       </div>
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   PieChart,
@@ -7,7 +7,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Wallet, TrendingUp, TrendingDown, Target, X } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, X, Search } from 'lucide-react';
 import type { AppData, Transaction } from '../types';
 import {
   getMonthlyBreakdown,
@@ -89,13 +89,45 @@ export default function Dashboard({ data }: DashboardProps) {
     rawCategory: category,
   }));
 
-  // Recent transactions (sorted newest first), filtered by selected category
-  const filteredTransactions = selectedCategory
-    ? transactions.filter((t) => t.category === selectedCategory)
-    : transactions;
-  const recentTransactions = [...filteredTransactions]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, selectedCategory ? 20 : 5);
+  // Dashboard search
+  const [dashSearch, setDashSearch] = useState('');
+
+  // Recent transactions (sorted newest first), filtered by selected category + search
+  const recentTransactions = useMemo(() => {
+    let txs = selectedCategory
+      ? transactions.filter((tx) => tx.category === selectedCategory)
+      : transactions;
+
+    if (dashSearch.trim()) {
+      const tokens = dashSearch.trim().toLowerCase().split(/\s+/);
+      txs = txs.filter((tx) =>
+        tokens.every((token) => {
+          const amountMatch = token.match(/^([><]=?)([\d.]+)$/);
+          if (amountMatch) {
+            const op = amountMatch[1];
+            const val = parseFloat(amountMatch[2]);
+            if (isNaN(val)) return true;
+            if (op === '>') return tx.amount > val;
+            if (op === '<') return tx.amount < val;
+            if (op === '>=') return tx.amount >= val;
+            if (op === '<=') return tx.amount <= val;
+          }
+          if (token.startsWith('type:')) return tx.type.includes(token.split(':')[1]);
+          if (token.startsWith('cur:') || token.startsWith('currency:')) return tx.currency.toLowerCase() === token.split(':')[1];
+          if (token.startsWith('source:')) return (tx.source || '').toLowerCase().includes(token.split(':')[1]);
+          return (
+            tx.description.toLowerCase().includes(token) ||
+            tx.category.toLowerCase().includes(token) ||
+            (tx.counterparty || '').toLowerCase().includes(token)
+          );
+        }),
+      );
+    }
+
+    return [...txs]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, selectedCategory || dashSearch ? 50 : 5);
+  }, [transactions, selectedCategory, dashSearch]);
 
   // Per-currency totals + converted totals in primary currency
   const currencyTotals = getCurrencyTotals(transactions, month, year);
@@ -245,21 +277,26 @@ export default function Dashboard({ data }: DashboardProps) {
               </ResponsiveContainer>
               {/* Legend */}
               <div className="flex flex-wrap sm:flex-col gap-x-3 gap-y-1.5 w-full sm:min-w-[130px] sm:w-auto">
-                {pieData.map((entry) => (
-                  <button
-                    key={entry.rawCategory}
-                    onClick={() => setSelectedCategory(prev => prev === entry.rawCategory ? null : entry.rawCategory)}
-                    className={`flex items-center gap-2 text-left transition-opacity ${
-                      selectedCategory && selectedCategory !== entry.rawCategory ? 'opacity-30' : ''
-                    }`}
-                  >
-                    <span
-                      className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: entry.color }}
-                    />
-                    <span className="text-xs text-gray-400 truncate">{entry.name}</span>
-                  </button>
-                ))}
+                {pieData.map((entry) => {
+                  const isSelected = selectedCategory === entry.rawCategory;
+                  return (
+                    <button
+                      key={entry.rawCategory}
+                      onClick={() => setSelectedCategory(prev => prev === entry.rawCategory ? null : entry.rawCategory)}
+                      aria-pressed={isSelected}
+                      className={`flex items-center gap-2 text-left transition-all ${
+                        selectedCategory && !isSelected ? 'opacity-30' : ''
+                      } ${isSelected ? 'font-semibold' : ''}`}
+                    >
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: entry.color }}
+                      />
+                      <span className={`text-xs truncate ${isSelected ? 'text-gray-200' : 'text-gray-400'}`}>{entry.name}</span>
+                      {isSelected && <X size={10} className="text-gray-400 shrink-0" />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ) : (
@@ -350,21 +387,10 @@ export default function Dashboard({ data }: DashboardProps) {
 
       {/* Bottom row - Recent Transactions */}
       <div className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-base font-semibold text-white">
-              {selectedCategory ? `${tc(selectedCategory)} ${t('dashboard.transactions')}` : t('dashboard.recentTransactions')}
-            </h2>
-            {selectedCategory && (
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className="flex items-center gap-1 text-xs bg-gray-800 text-gray-400 hover:text-gray-200 px-2 py-1 rounded-full transition-colors"
-              >
-                {t('dashboard.clearFilter')}
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-white">
+            {t('dashboard.recentTransactions')}
+          </h2>
           <Link
             to="/transactions"
             className="text-sm text-primary-400 hover:text-primary-300 transition-colors"
@@ -372,6 +398,39 @@ export default function Dashboard({ data }: DashboardProps) {
             {t('dashboard.viewAll')}
           </Link>
         </div>
+
+        {selectedCategory && (() => {
+          const catColor = pieData.find(p => p.rawCategory === selectedCategory)?.color || '#64748b';
+          return (
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:opacity-80"
+              style={{ backgroundColor: catColor + '25', color: catColor, border: `1px solid ${catColor}40` }}
+            >
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: catColor }} />
+              {tc(selectedCategory)}
+              <X size={12} />
+            </button>
+          );
+        })()}
+
+        {(selectedCategory || dashSearch) && (
+          <div className="relative mb-3">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+            <input
+              type="text"
+              value={dashSearch}
+              onChange={(e) => setDashSearch(e.target.value)}
+              placeholder={t('transactions.searchPlaceholder')}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 pl-8 text-xs text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+            {dashSearch && (
+              <button onClick={() => setDashSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        )}
 
         {recentTransactions.length > 0 ? (
           <div className="divide-y divide-gray-800">

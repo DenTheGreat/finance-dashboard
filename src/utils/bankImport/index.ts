@@ -8,6 +8,42 @@ import { PKO_COLUMNS, parsePKO } from './pko';
 export type { ColumnMapping, ParsedBankTransaction, ParseResult, DetectedBank } from './types';
 export { parseDate, detectCategoryForDescription } from './shared';
 
+/** Bank → encoding mapping. Used by BankImport to read the file with the correct encoding. */
+export const BANK_ENCODINGS: Record<DetectedBank, string> = {
+  Monobank: 'UTF-8',
+  PrivatBank: 'windows-1251',
+  PKO: 'windows-1250',
+  unknown: 'UTF-8',
+};
+
+/**
+ * Quick detection: read headers with any encoding (ASCII headers survive any single-byte encoding)
+ * and return the detected bank so the caller can re-read with the correct encoding.
+ */
+export function detectBank(csvText: string): DetectedBank {
+  const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length < 1) return 'unknown';
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = parseCSVLine(lines[0], delimiter);
+
+  const monoDateIdx = findColumnIndex(headers, MONO_COLUMNS.date);
+  const monoDescIdx = findColumnIndex(headers, MONO_COLUMNS.description);
+  const monoAmountCardIdx = findColumnIndex(headers, MONO_COLUMNS.amountCard);
+  if (monoDateIdx !== -1 && monoDescIdx !== -1 && monoAmountCardIdx !== -1) return 'Monobank';
+
+  const privatDateIdx = findColumnIndex(headers, PRIVAT_COLUMNS.date);
+  const privatDescIdx = findColumnIndex(headers, PRIVAT_COLUMNS.description);
+  const privatAmountIdx = findColumnIndex(headers, PRIVAT_COLUMNS.amount);
+  if (privatDateIdx !== -1 && privatDescIdx !== -1 && privatAmountIdx !== -1) return 'PrivatBank';
+
+  const pkoDateIdx = findColumnIndex(headers, PKO_COLUMNS.date);
+  const pkoAmountIdx = findColumnIndex(headers, PKO_COLUMNS.amount);
+  const pkoDescIdx = findColumnIndex(headers, PKO_COLUMNS.description);
+  if (pkoDateIdx !== -1 && pkoAmountIdx !== -1 && pkoDescIdx !== -1) return 'PKO';
+
+  return 'unknown';
+}
+
 export function parseCSV(csvText: string, appRules?: CategoryRule[]): ParseResult {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) {

@@ -61,6 +61,7 @@ const ru: Record<string, string> = {
   // Transactions page
   'transactions.title': 'Транзакции',
   'transactions.addTransaction': 'Добавить транзакцию',
+  'transactions.add': 'Добавить',
   'transactions.searchPlaceholder': 'Поиск... (напр. "zabka", ">100", "category:food", "date:2026-03", "type:expense")',
   'transactions.groupBy': 'Группировать по',
   'transactions.groupNone': 'Без групп',
@@ -94,6 +95,14 @@ const ru: Record<string, string> = {
   'transactions.noDescription': 'Без описания',
   'transactions.transaction': 'транзакция',
   'transactions.transactions': 'транзакций',
+  'transactions.details': 'Детали транзакции',
+  'transactions.counterparty': 'Контрагент',
+  'transactions.source': 'Источник',
+  'transactions.notes': 'Заметки',
+  'transactions.saveNotes': 'Сохранить заметки',
+  'transactions.exchangeRate': 'Курс обмена',
+  'transactions.noCounterparty': '—',
+  'transactions.exportCsv': 'Экспорт CSV',
 
   // Add Transaction form
   'form.type': 'Тип',
@@ -274,6 +283,7 @@ const ru: Record<string, string> = {
   'common.save': 'Сохранить',
   'common.delete': 'Удалить',
   'common.apply': 'Применить',
+  'common.add': 'Добавить',
   'common.optional': 'необязательно',
 };
 

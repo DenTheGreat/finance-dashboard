@@ -61,6 +61,12 @@ export function updateTransactionCategory(data: AppData, id: string, category: s
   return updateTransaction(data, { ...tx, category: category as Transaction['category'] });
 }
 
+export function updateTransactionFields(data: AppData, id: string, updates: Partial<Transaction>): AppData {
+  const tx = data.transactions.find((t) => t.id === id);
+  if (!tx) return data;
+  return updateTransaction(data, { ...tx, ...updates });
+}
+
 export function deleteTransaction(data: AppData, id: string): AppData {
   const updated = {
     ...data,

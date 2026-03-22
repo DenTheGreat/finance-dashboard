@@ -61,6 +61,7 @@ const uk: Record<string, string> = {
   // Transactions page
   'transactions.title': '\u0422\u0440\u0430\u043D\u0437\u0430\u043A\u0446\u0456\u0457',
   'transactions.addTransaction': '\u0414\u043E\u0434\u0430\u0442\u0438 \u0442\u0440\u0430\u043D\u0437\u0430\u043A\u0446\u0456\u044E',
+  'transactions.add': 'Додати',
   'transactions.searchPlaceholder': '\u041F\u043E\u0448\u0443\u043A... (\u043D\u0430\u043F\u0440. "zabka", ">100", "category:food", "date:2026-03", "type:expense")',
   'transactions.groupBy': '\u0413\u0440\u0443\u043F\u0443\u0432\u0430\u0442\u0438 \u0437\u0430',
   'transactions.groupNone': '\u0411\u0435\u0437 \u0433\u0440\u0443\u043F',
@@ -94,6 +95,14 @@ const uk: Record<string, string> = {
   'transactions.noDescription': '\u0411\u0435\u0437 \u043E\u043F\u0438\u0441\u0443',
   'transactions.transaction': '\u0442\u0440\u0430\u043D\u0437\u0430\u043A\u0446\u0456\u044F',
   'transactions.transactions': '\u0442\u0440\u0430\u043D\u0437\u0430\u043A\u0446\u0456\u0439',
+  'transactions.details': 'Деталі транзакції',
+  'transactions.counterparty': 'Контрагент',
+  'transactions.source': 'Джерело',
+  'transactions.notes': 'Нотатки',
+  'transactions.saveNotes': 'Зберегти нотатки',
+  'transactions.exchangeRate': 'Курс обміну',
+  'transactions.noCounterparty': '—',
+  'transactions.exportCsv': 'Експорт CSV',
 
   // Add Transaction form
   'form.type': '\u0422\u0438\u043F',
@@ -273,6 +282,7 @@ const uk: Record<string, string> = {
   'common.save': '\u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438',
   'common.delete': '\u0412\u0438\u0434\u0430\u043B\u0438\u0442\u0438',
   'common.apply': '\u0417\u0430\u0441\u0442\u043E\u0441\u0443\u0432\u0430\u0442\u0438',
+  'common.add': 'Додати',
   'common.optional': '\u043D\u0435\u043E\u0431\u043E\u0432\'\u044F\u0437\u043A\u043E\u0432\u043E',
 };
 

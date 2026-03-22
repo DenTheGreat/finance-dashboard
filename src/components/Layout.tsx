@@ -7,7 +7,6 @@ import {
   PiggyBank,
   Settings,
   Wallet,
-  FileSpreadsheet,
   Menu,
   Sun,
   Moon,
@@ -19,7 +18,6 @@ import type { Locale } from '../i18n'
 const navLinks = [
   { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
   { to: '/transactions', labelKey: 'nav.transactions', icon: ArrowLeftRight },
-  { to: '/import', labelKey: 'nav.bankImport', icon: FileSpreadsheet },
   { to: '/debts', labelKey: 'nav.debts', icon: CreditCard },
   { to: '/savings', labelKey: 'nav.savings', icon: PiggyBank },
   { to: '/settings', labelKey: 'nav.settings', icon: Settings },

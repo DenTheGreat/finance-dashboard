@@ -44,6 +44,8 @@ export const WANTS_CATEGORIES: ExpenseCategory[] = [
   'Entertainment', 'Shopping', 'Education', 'Personal', 'Transfers', 'Subscriptions',
 ];
 
+export type TransactionSource = 'manual' | 'PKO' | 'Monobank' | 'PrivatBank' | 'import';
+
 export interface Transaction {
   id: string;
   type: TransactionType;
@@ -53,6 +55,9 @@ export interface Transaction {
   description: string;
   date: string; // ISO date string YYYY-MM-DD
   exchangeRateAtTime?: number; // USD→PLN rate when this transaction occurred
+  source?: TransactionSource; // where this transaction came from
+  counterparty?: string; // who received/sent the money
+  notes?: string; // user notes
   recurring?: boolean;
   recurringInterval?: 'weekly' | 'monthly' | 'yearly';
 }
