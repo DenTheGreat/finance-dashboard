@@ -125,17 +125,18 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">{t('savings.title')}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">{t('savings.title')}</h1>
           <p className="text-gray-400 text-sm mt-1">{t('savings.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors shrink-0 min-h-[44px]"
         >
           <Plus className="h-4 w-4" />
-          {t('savings.addGoal')}
+          <span className="hidden sm:inline">{t('savings.addGoal')}</span>
+          <span className="sm:hidden">{t('common.add') || t('savings.addGoal')}</span>
         </button>
       </div>
 
@@ -204,14 +205,14 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
         </div>
 
         {/* Optimal savings amount */}
-        <div className="flex items-center gap-2 mb-4 p-3 bg-primary-900/40 rounded-lg border border-primary-700/20">
-          <Target className="h-4 w-4 text-primary-300 shrink-0" />
+        <div className="flex items-start gap-2 mb-4 p-3 bg-primary-900/40 rounded-lg border border-primary-700/20">
+          <Target className="h-4 w-4 text-primary-300 shrink-0 mt-0.5" />
           <span className="text-gray-300 text-sm">
             {t('advisor.optimalMonthlySavings')}:&nbsp;
             <span className="text-white font-semibold">
               {formatCurrency(advice.optimalSavingsAmount, data.settings.primaryCurrency)}
             </span>
-            <span className="text-gray-500 ml-1">({advice.optimalSavingsRate}% {t('advisor.ofIncome')})</span>
+            <span className="text-gray-500 ml-1 block sm:inline">({advice.optimalSavingsRate}% {t('advisor.ofIncome')})</span>
           </span>
         </div>
 
@@ -221,7 +222,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
             {advice.tips.map((tip, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
                 <span className="text-primary-400 mt-0.5 shrink-0">{'\u2022'}</span>
-                {tip}
+                {t(tip)}
               </li>
             ))}
           </ul>
@@ -388,8 +389,8 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
 
       {/* Add Goal Modal */}
       {showModal && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-gray-900 rounded-2xl border border-gray-800 shadow-2xl">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-gray-900 rounded-t-2xl sm:rounded-2xl border border-gray-800 shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
               <h2 className="text-white font-semibold text-lg">{t('savings.newGoal')}</h2>

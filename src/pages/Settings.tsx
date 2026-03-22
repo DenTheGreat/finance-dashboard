@@ -112,18 +112,18 @@ export default function Settings({
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <SettingsIcon className="h-7 w-7 text-primary-400" />
-        <h1 className="text-2xl font-bold text-white">{t('settings.title')}</h1>
+        <SettingsIcon className="h-6 w-6 sm:h-7 sm:w-7 text-primary-400" />
+        <h1 className="text-xl sm:text-2xl font-bold text-white">{t('settings.title')}</h1>
       </div>
 
       {/* Language Settings */}
-      <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+      <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-4 sm:space-y-5">
         <h2 className="text-lg font-semibold text-white">{t('settings.language')}</h2>
         <p className="text-sm text-gray-400">{t('settings.languageDescription')}</p>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 sm:gap-4">
           {([
             { code: 'en' as Locale, label: 'English' },
             { code: 'uk' as Locale, label: '\u0423\u043A\u0440\u0430\u0457\u043D\u0441\u044C\u043A\u0430' },
@@ -148,7 +148,7 @@ export default function Settings({
       </section>
 
       {/* Currency Settings */}
-      <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+      <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-4 sm:space-y-5">
         <h2 className="text-lg font-semibold text-white">{t('settings.currencySettings')}</h2>
 
         {/* Primary Currency */}
@@ -156,7 +156,7 @@ export default function Settings({
           <label className="block text-sm font-medium text-gray-300">
             {t('settings.primaryCurrency')}
           </label>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-3 sm:gap-4">
             {(['USD', 'PLN', 'UAH'] as const).map((c) => (
               <label
                 key={c}
@@ -221,11 +221,11 @@ export default function Settings({
               type="button"
               onClick={handleRefreshRate}
               disabled={fetchingRate}
-              className="shrink-0 inline-flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-100 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+              className="shrink-0 inline-flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-100 text-sm font-medium px-2.5 sm:px-3 py-2 rounded-lg transition-colors min-h-[44px]"
               title={t('settings.refresh')}
             >
               <RefreshCw className={`h-4 w-4 ${fetchingRate ? 'animate-spin' : ''}`} />
-              {t('settings.refresh')}
+              <span className="hidden sm:inline">{t('settings.refresh')}</span>
             </button>
           </div>
           {autoRate && (
@@ -284,7 +284,7 @@ export default function Settings({
         {/* Save */}
         <button
           onClick={handleSaveSettings}
-          className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-medium px-5 py-2.5 rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-medium px-5 py-2.5 rounded-lg transition-colors min-h-[44px]"
         >
           <SettingsIcon className="h-4 w-4" />
           {t('settings.saveSettings')}
@@ -292,7 +292,7 @@ export default function Settings({
       </section>
 
       {/* Data Management */}
-      <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+      <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-4 sm:space-y-5">
         <h2 className="text-lg font-semibold text-white">{t('settings.dataManagement')}</h2>
 
         {/* Export */}
@@ -357,7 +357,7 @@ export default function Settings({
       </section>
 
       {/* Demo Data */}
-      <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-3">
+      <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-3">
         <h2 className="text-lg font-semibold text-white">{t('settings.demoData')}</h2>
         <p className="text-sm text-gray-400">
           {t('settings.demoDescription')}
@@ -375,7 +375,7 @@ export default function Settings({
       </section>
 
       {/* About */}
-      <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-3">
+      <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-3">
         <div className="flex items-center gap-2">
           <Info className="h-5 w-5 text-primary-400" />
           <h2 className="text-lg font-semibold text-white">{t('settings.about')}</h2>

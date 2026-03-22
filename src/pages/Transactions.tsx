@@ -835,16 +835,17 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100 p-6 pb-24">
+    <div className="min-h-screen bg-gray-950 text-gray-100 pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-100">{t('transactions.title')}</h1>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-100">{t('transactions.title')}</h1>
         <button
           onClick={handleOpenForm}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 sm:gap-2 bg-primary-600 hover:bg-primary-700 text-white font-medium px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px]"
         >
-          <Plus size={18} />
-          {t('transactions.addTransaction')}
+          <Plus size={16} />
+          <span className="hidden xs:inline">{t('transactions.addTransaction')}</span>
+          <span className="xs:hidden">{t('transactions.add') || t('transactions.addTransaction')}</span>
         </button>
       </div>
 
@@ -1062,7 +1063,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
       {/* Bulk action bar */}
       {someSelected && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 shadow-2xl">
+        <div className="fixed bottom-4 left-2 right-2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-50 flex flex-wrap items-center gap-2 sm:gap-3 bg-gray-800 border border-gray-600 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-2xl max-w-full">
           <Check size={15} className="text-primary-400 flex-shrink-0" />
           <span className="text-sm font-medium text-gray-200 whitespace-nowrap">
             {selected.size} {t('transactions.selected')}
@@ -1132,7 +1133,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
           style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
           onClick={(e) => { if (e.target === e.currentTarget) handleCloseForm(); }}
         >
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+          <div className="bg-gray-800 rounded-xl p-4 sm:p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-gray-100">{t('transactions.addTransaction')}</h2>
               <button onClick={handleCloseForm} className="text-gray-400 hover:text-gray-100 transition-colors">

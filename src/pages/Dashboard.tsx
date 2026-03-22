@@ -206,22 +206,22 @@ export default function Dashboard({ data }: DashboardProps) {
       </div>
 
       {/* Middle row */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Pie chart - Expenses by Category */}
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800">
           <h2 className="text-base font-semibold text-white mb-4">
             {t('dashboard.expensesByCategory')}
           </h2>
           {pieData.length > 0 ? (
-            <div className="flex gap-4 items-center">
-              <ResponsiveContainer width="100%" height={220}>
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <Pie
                     data={pieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={90}
+                    innerRadius={45}
+                    outerRadius={75}
                     paddingAngle={2}
                     dataKey="value"
                     cursor="pointer"
@@ -244,7 +244,7 @@ export default function Dashboard({ data }: DashboardProps) {
                 </PieChart>
               </ResponsiveContainer>
               {/* Legend */}
-              <div className="flex flex-col gap-1.5 min-w-[130px]">
+              <div className="flex flex-wrap sm:flex-col gap-x-3 gap-y-1.5 w-full sm:min-w-[130px] sm:w-auto">
                 {pieData.map((entry) => (
                   <button
                     key={entry.rawCategory}
@@ -263,14 +263,14 @@ export default function Dashboard({ data }: DashboardProps) {
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-center h-[220px] text-gray-500 text-sm">
+            <div className="flex items-center justify-center h-[180px] text-gray-500 text-sm">
               {t('dashboard.noExpenseData')}
             </div>
           )}
         </div>
 
         {/* Savings Advisor */}
-        <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <div className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-white">{t('dashboard.savingsAdvisor')}</h2>
             <span
@@ -341,7 +341,7 @@ export default function Dashboard({ data }: DashboardProps) {
             {advice.tips.map((tip, i) => (
               <li key={i} className="flex gap-2 text-sm text-gray-300">
                 <span className="text-gray-500 mt-0.5 shrink-0">&#8226;</span>
-                {tip}
+                {t(tip)}
               </li>
             ))}
           </ul>
@@ -349,7 +349,7 @@ export default function Dashboard({ data }: DashboardProps) {
       </div>
 
       {/* Bottom row - Recent Transactions */}
-      <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+      <div className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <h2 className="text-base font-semibold text-white">
@@ -381,8 +381,8 @@ export default function Dashboard({ data }: DashboardProps) {
                 className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
               >
                 {/* Left: date + description + category */}
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="text-xs text-gray-500 w-20 shrink-0">
+                <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                  <div className="text-xs text-gray-500 w-14 sm:w-20 shrink-0">
                     {formatDate(tx.date)}
                   </div>
                   <div className="min-w-0">

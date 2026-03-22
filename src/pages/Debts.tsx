@@ -94,9 +94,9 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">{t('debts.title')}</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">{t('debts.title')}</h1>
           <p className="text-gray-400 mt-1 text-sm">
             {t('debts.totalRemaining')}:{' '}
             <span className="text-red-400 font-semibold">
@@ -108,10 +108,11 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 min-h-[44px]"
         >
           <Plus className="h-4 w-4" />
-          {t('debts.addDebt')}
+          <span className="hidden sm:inline">{t('debts.addDebt')}</span>
+          <span className="sm:hidden">{t('common.add') || t('debts.addDebt')}</span>
         </button>
       </div>
 
@@ -257,7 +258,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                               [debt.id]: e.target.value,
                             }))
                           }
-                          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 text-sm w-32 focus:outline-none focus:border-primary-500"
+                          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 text-sm flex-1 min-w-0 focus:outline-none focus:border-primary-500"
                           autoFocus
                         />
                         <button
@@ -294,8 +295,8 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
 
       {/* Add Debt Modal */}
       {showModal && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md mx-4 shadow-xl">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-t-2xl sm:rounded-xl p-4 sm:p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-semibold text-white">{t('debts.addDebt')}</h2>
               <button

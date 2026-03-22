@@ -210,6 +210,7 @@ export default function App() {
                 onClear={handleClearTransactions}
                 onDeduplicate={handleDeduplicateTransactions}
                 onAddRule={handleAddCategoryRule}
+                onUpdateSettings={handleUpdateSettings}
               />
             }
           />

@@ -32,6 +32,7 @@ interface BankImportProps {
   onClear: () => void;
   onDeduplicate: () => number;
   onAddRule: (keyword: string, category: string) => void;
+  onUpdateSettings: (s: Partial<import('../types').UserSettings>) => void;
 }
 
 type Step = 1 | 2 | 3;
@@ -42,7 +43,7 @@ const INPUT_CLASS =
 const SELECT_CLASS =
   'bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-xs';
 
-export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddRule }: BankImportProps) {
+export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddRule, onUpdateSettings }: BankImportProps) {
   const { t, tc, formatCurrency } = useI18n();
   const [step, setStep] = useState<Step>(1);
   const [dragging, setDragging] = useState(false);
@@ -288,11 +289,11 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
   const summaryCurrency = transactions[0]?.currency ?? data.settings.primaryCurrency;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <FileSpreadsheet className="h-7 w-7 text-primary-400" />
-        <h1 className="text-2xl font-bold text-white">{t('import.title')}</h1>
+        <FileSpreadsheet className="h-6 w-6 sm:h-7 sm:w-7 text-primary-400" />
+        <h1 className="text-xl sm:text-2xl font-bold text-white">{t('import.title')}</h1>
       </div>
 
       {/* Success banner */}
@@ -319,13 +320,13 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
 
       {/* Step 1 - Upload */}
       {step === 1 && (
-        <section className="bg-gray-900 rounded-xl p-8 border border-gray-800">
+        <section className="bg-gray-900 rounded-xl p-4 sm:p-8 border border-gray-800">
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`flex flex-col items-center justify-center gap-4 rounded-xl p-10 border-2 border-dashed cursor-pointer transition-colors ${
+            className={`flex flex-col items-center justify-center gap-3 sm:gap-4 rounded-xl p-6 sm:p-10 border-2 border-dashed cursor-pointer transition-colors ${
               dragging
                 ? 'border-primary-400 bg-primary-900/20'
                 : 'border-gray-700 hover:border-primary-500 hover:bg-gray-800/50'
@@ -399,7 +400,7 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
 
       {/* Step 2 - Column Mapping */}
       {step === 2 && parseResult && (
-        <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-6">
+        <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-5 sm:space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-white">{t('import.columnMapping')}</h2>
@@ -516,7 +517,7 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
 
       {/* Step 3 - Review & Import */}
       {step === 3 && parseResult && (
-        <section className="bg-gray-900 rounded-xl p-6 border border-gray-800 space-y-5">
+        <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-4 sm:space-y-5">
           {/* Header row */}
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
@@ -552,8 +553,14 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
 
           {/* Currency hint */}
           {parseResult.detectedCurrency && parseResult.detectedCurrency !== data.settings.primaryCurrency && (
-            <div className="bg-yellow-900/30 border border-yellow-800 rounded-lg px-4 py-3 text-sm text-yellow-300">
-              {t('import.csvCurrencyHint', { csvCurrency: parseResult.detectedCurrency, primaryCurrency: data.settings.primaryCurrency })}
+            <div className="bg-yellow-900/30 border border-yellow-800 rounded-lg px-4 py-3 text-sm text-yellow-300 flex items-center justify-between gap-3 flex-wrap">
+              <span>{t('import.csvCurrencyHint', { csvCurrency: parseResult.detectedCurrency, primaryCurrency: data.settings.primaryCurrency })}</span>
+              <button
+                onClick={() => onUpdateSettings({ primaryCurrency: parseResult.detectedCurrency as import('../types').Currency })}
+                className="shrink-0 px-3 py-1 rounded-lg bg-yellow-800 hover:bg-yellow-700 text-yellow-200 text-xs font-medium transition-colors"
+              >
+                {t('import.switchTo', { currency: parseResult.detectedCurrency })}
+              </button>
             </div>
           )}
 
@@ -621,74 +628,62 @@ export default function BankImport({ data, onAdd, onClear, onDeduplicate, onAddR
                 return (
                   <div
                     key={i}
-                    className={`flex items-center gap-3 px-4 py-3 transition-colors ${
+                    className={`px-3 sm:px-4 py-3 transition-colors ${
                       isChecked ? 'bg-gray-900' : 'bg-gray-900/50 opacity-50'
                     }`}
                   >
-                    {/* Checkbox */}
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggleSelect(i)}
-                      className="h-4 w-4 rounded border-gray-600 bg-gray-800 accent-primary-500 shrink-0 cursor-pointer"
-                    />
-
-                    {/* Date */}
-                    <span className="text-xs text-gray-400 w-24 shrink-0">
-                      {tx.date}
-                    </span>
-
-                    {/* Description */}
-                    <span className="text-sm text-gray-200 flex-1 min-w-0 truncate" title={tx.description}>
-                      {tx.description || (
-                        <span className="text-gray-500 italic">{t('transactions.noDescription')}</span>
-                      )}
-                    </span>
-
-                    {/* Category select */}
-                    <select
-                      value={currentCategory}
-                      onChange={(e) =>
-                        setCategoryOverrides((prev) => ({
-                          ...prev,
-                          [i]: e.target.value,
-                        }))
-                      }
-                      className={SELECT_CLASS}
-                      style={{ borderColor: catColor + '60' }}
-                    >
-                      {allCategories.map((c) => (
-                        <option key={c} value={c}>
-                          {tc(c)}
-                        </option>
-                      ))}
-                    </select>
-
-                    {/* Type badge */}
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
-                        isIncome
-                          ? 'bg-green-900/40 text-green-400'
-                          : 'bg-red-900/40 text-red-400'
-                      }`}
-                    >
-                      {t(`transactions.${isIncome ? 'income' : 'expense'}`)}
-                    </span>
-
-                    {/* Amount */}
-                    <span
-                      className={`text-sm font-semibold w-28 text-right shrink-0 ${
-                        isIncome ? 'text-green-400' : 'text-red-400'
-                      }`}
-                    >
-                      {isIncome ? '+' : '-'}
-                      {formatCurrency(tx.amount, tx.currency)}
-                    </span>
-
-                    {/* Currency badge */}
-                    <span className="text-xs text-gray-500 w-8 shrink-0">
-                      {tx.currency}
-                    </span>
+                    {/* Top row: checkbox + description + amount */}
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSelect(i)}
+                        className="h-4 w-4 rounded border-gray-600 bg-gray-800 accent-primary-500 shrink-0 cursor-pointer mt-0.5"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-200 truncate" title={tx.description}>
+                          {tx.description || (
+                            <span className="text-gray-500 italic">{t('transactions.noDescription')}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">{tx.date}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className={`text-sm font-semibold ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
+                          {isIncome ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
+                        </span>
+                        <p className="text-xs text-gray-500">{tx.currency}</p>
+                      </div>
+                    </div>
+                    {/* Bottom row: category select + type badge */}
+                    <div className="flex items-center gap-2 mt-2 ml-6">
+                      <select
+                        value={currentCategory}
+                        onChange={(e) =>
+                          setCategoryOverrides((prev) => ({
+                            ...prev,
+                            [i]: e.target.value,
+                          }))
+                        }
+                        className={SELECT_CLASS}
+                        style={{ borderColor: catColor + '60' }}
+                      >
+                        {allCategories.map((c) => (
+                          <option key={c} value={c}>
+                            {tc(c)}
+                          </option>
+                        ))}
+                      </select>
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
+                          isIncome
+                            ? 'bg-green-900/40 text-green-400'
+                            : 'bg-red-900/40 text-red-400'
+                        }`}
+                      >
+                        {t(`transactions.${isIncome ? 'income' : 'expense'}`)}
+                      </span>
+                    </div>
                   </div>
                 );
               })
@@ -747,12 +742,12 @@ function StepIndicator({ current }: StepIndicatorProps) {
     { n: 3 as Step, label: t('import.reviewImport') },
   ];
   return (
-    <div className="flex items-center gap-0">
+    <div className="flex items-center gap-0 w-full">
       {steps.map((s, idx) => {
         const done = current > s.n;
         const active = current === s.n;
         return (
-          <div key={s.n} className="flex items-center">
+          <div key={s.n} className="flex items-center flex-1 last:flex-none">
             <div className="flex flex-col items-center">
               <div
                 className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
@@ -766,7 +761,7 @@ function StepIndicator({ current }: StepIndicatorProps) {
                 {done ? <Check className="h-4 w-4" /> : s.n}
               </div>
               <span
-                className={`text-xs mt-1 font-medium ${
+                className={`text-xs mt-1 font-medium text-center max-w-[60px] sm:max-w-none leading-tight ${
                   active ? 'text-primary-400' : done ? 'text-gray-400' : 'text-gray-600'
                 }`}
               >
@@ -775,7 +770,7 @@ function StepIndicator({ current }: StepIndicatorProps) {
             </div>
             {idx < steps.length - 1 && (
               <div
-                className={`h-0.5 w-16 mx-2 mb-4 rounded-full transition-colors ${
+                className={`h-0.5 flex-1 mx-2 mb-4 rounded-full transition-colors ${
                   current > s.n ? 'bg-primary-600' : 'bg-gray-800'
                 }`}
               />

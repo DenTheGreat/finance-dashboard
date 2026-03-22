@@ -92,7 +92,7 @@ export function getSavingsAdvice(breakdown: BudgetBreakdown): SavingsAdvice {
       wantsPercent: 0,
       savingsPercent: 0,
       status: 'needs_attention',
-      tips: ['Start by tracking your income to get personalized advice.'],
+      tips: ['advisor.tip.trackIncome'],
     };
   }
 
@@ -113,31 +113,31 @@ export function getSavingsAdvice(breakdown: BudgetBreakdown): SavingsAdvice {
 
   if (savingsPercent >= 20) {
     status = 'excellent';
-    tips.push('You\'re saving 20%+ of your income. Keep it up!');
+    tips.push('advisor.tip.excellent');
     if (needsPercent > 50) {
-      tips.push('Your needs spending is above 50%. See if you can reduce housing or transportation costs.');
+      tips.push('advisor.tip.needsHigh');
     }
   } else if (savingsPercent >= 10) {
     status = 'good';
-    tips.push(`You're saving ${savingsPercent.toFixed(1)}%. Try to reach 20% for optimal financial health.`);
+    tips.push('advisor.tip.good');
     if (wantsPercent > 30) {
-      tips.push('Consider cutting back on wants - entertainment, shopping, or subscriptions.');
+      tips.push('advisor.tip.cutWants');
     }
   } else if (savingsPercent >= 0) {
     status = 'fair';
-    tips.push('You\'re breaking even or barely saving. Look for areas to cut expenses.');
+    tips.push('advisor.tip.fair');
     if (needsPercent > 60) {
-      tips.push('Your essential expenses are high. Consider cheaper alternatives for housing or transport.');
+      tips.push('advisor.tip.essentialsHigh');
     }
     if (wantsPercent > 30) {
-      tips.push('Reduce discretionary spending to boost your savings rate.');
+      tips.push('advisor.tip.reduceDiscretionary');
     }
   } else {
     status = 'needs_attention';
-    tips.push('You\'re spending more than you earn. This needs immediate attention.');
-    tips.push('Prioritize cutting non-essential expenses first.');
+    tips.push('advisor.tip.overspending');
+    tips.push('advisor.tip.cutNonEssential');
     if (wantsPercent > 20) {
-      tips.push(`Cut wants spending by ${((wantsPercent - 20) * totalIncome / 100).toFixed(0)} to start saving.`);
+      tips.push('advisor.tip.cutWantsAmount');
     }
   }
 
