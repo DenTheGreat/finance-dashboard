@@ -17,6 +17,7 @@ export type ExpenseCategory =
   | 'Utilities'
   | 'Healthcare'
   | 'Insurance'
+  | 'Taxes'
   | 'Entertainment'
   | 'Shopping'
   | 'Education'
@@ -32,12 +33,12 @@ export const INCOME_CATEGORIES: IncomeCategory[] = [
 
 export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   'Housing', 'Transportation', 'Food', 'Utilities', 'Healthcare',
-  'Insurance', 'Entertainment', 'Shopping', 'Education', 'Personal',
+  'Insurance', 'Taxes', 'Entertainment', 'Shopping', 'Education', 'Personal',
   'Transfers', 'Subscriptions', 'Debt Payment', 'Other',
 ];
 
 export const NEEDS_CATEGORIES: ExpenseCategory[] = [
-  'Housing', 'Transportation', 'Food', 'Utilities', 'Healthcare', 'Insurance',
+  'Housing', 'Transportation', 'Food', 'Utilities', 'Healthcare', 'Insurance', 'Taxes',
 ];
 
 export const WANTS_CATEGORIES: ExpenseCategory[] = [
@@ -113,6 +114,7 @@ export const CATEGORY_COLORS: Record<string, string> = {
   Utilities: '#f59e0b',
   Healthcare: '#ef4444',
   Insurance: '#f97316',
+  Taxes: '#b91c1c',
   Entertainment: '#10b981',
   Shopping: '#14b8a6',
   Education: '#3b82f6',
