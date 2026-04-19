@@ -107,7 +107,10 @@ function monthKey(iso: string): string {
 
 function monthLabel(key: string): string {
   const [y, m] = key.split('-');
-  return format(new Date(Number(y), Number(m) - 1, 1), 'MMMM yyyy');
+  const year = Number(y);
+  const month = Number(m);
+  if (isNaN(year) || isNaN(month) || month < 1 || month > 12) return key;
+  return format(new Date(year, month - 1, 1), 'MMMM yyyy');
 }
 
 // ---------------------------------------------------------------------------

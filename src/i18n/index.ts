@@ -42,7 +42,9 @@ export function createI18nValue(locale: Locale, setLocale: (l: Locale) => void):
   };
 
   const formatDate = (iso: string): string => {
+    if (!iso || typeof iso !== 'string') return '';
     const date = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
+    if (isNaN(date.getTime())) return iso;
     if (locale === 'uk') {
       return dateFnsFormat(date, 'd MMM yyyy', { locale: ukLocale });
     }
