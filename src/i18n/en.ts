@@ -119,7 +119,7 @@ const en: Record<string, string> = {
   // Bank Import
   'import.title': 'Bank Import',
   'import.dropFile': 'Drop your bank CSV file here or click to browse',
-  'import.supports': 'Supports PKO BP, Monobank, PrivatBank, and generic CSV formats',
+  'import.supports': 'Supports PKO BP (CSV, XLSX), Monobank, PrivatBank, and generic CSV formats',
   'import.columnMapping': 'Column Mapping',
   'import.reviewImport': 'Review & Import',
   'import.upload': 'Upload',
@@ -158,6 +158,7 @@ const en: Record<string, string> = {
   'import.ofSelected': 'of',
   'import.clearConfirm': 'Clear all {count} transactions? This cannot be undone.',
   'import.selectCsvFile': 'Please select a .csv file.',
+  'import.selectValidFile': 'Please select a .csv or .xlsx file.',
   'import.couldNotRead': 'Could not read file.',
   'import.emptyFile': 'The file appears to be empty or unrecognised.',
 

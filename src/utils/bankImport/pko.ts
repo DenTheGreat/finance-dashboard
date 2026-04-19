@@ -194,8 +194,13 @@ export function parsePKO(
 
     const suggestedCategory = isIncome && category === 'Other' ? 'Other Income' : category;
 
+    const parsedDate = parseDate(fields[mapping.date] || '');
+    if (!parsedDate) {
+      continue;
+    }
+
     const tx: ParsedBankTransaction = {
-      date: parseDate(fields[mapping.date] || ''),
+      date: parsedDate,
       amount: Math.abs(amount),
       description: description.slice(0, 200),
       currency,

@@ -4,9 +4,11 @@ import { detectDelimiter, parseCSVLine, findColumnIndex } from './shared';
 import { MONO_COLUMNS, parseMono } from './monobank';
 import { PRIVAT_COLUMNS, parsePrivat } from './privatbank';
 import { PKO_COLUMNS, parsePKO } from './pko';
+import { parsePKOXLSX } from './xlsx';
 
 export type { ColumnMapping, ParsedBankTransaction, ParseResult, DetectedBank } from './types';
 export { parseDate, detectCategoryForDescription } from './shared';
+export { parsePKOXLSX };
 
 /** Bank → encoding mapping. Used by BankImport to read the file with the correct encoding. */
 export const BANK_ENCODINGS: Record<DetectedBank, string> = {

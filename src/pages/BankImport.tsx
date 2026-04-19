@@ -16,6 +16,7 @@ import {
 } from '../types';
 import {
   parseCSV,
+  parsePKOXLSX,
   detectBank,
   BANK_ENCODINGS,
   parseDate,
@@ -100,38 +101,54 @@ export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }:
   }
 
   function processFile(file: File) {
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setParseError(t('import.selectCsvFile'));
+    const isCSV = file.name.toLowerCase().endsWith('.csv');
+    const isXLSX = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    
+    if (!isCSV && !isXLSX) {
+      setParseError(t('import.selectValidFile'));
       return;
     }
+    
     setParseError(null);
     setFileName(file.name);
 
-    // Step 1: Quick-read with ASCII-safe encoding to detect bank format from headers
-    const detector = new FileReader();
-    detector.onload = (e) => {
-      const probe = e.target?.result;
-      if (typeof probe !== 'string') {
-        setParseError(t('import.couldNotRead'));
-        return;
-      }
-      const bank = detectBank(probe);
-      const encoding = BANK_ENCODINGS[bank];
-
-      // Step 2: Re-read with the correct encoding and parse
+    if (isXLSX) {
       const reader = new FileReader();
-      reader.onload = (e2) => {
-        const text = e2.target?.result;
-        if (typeof text !== 'string') {
+      reader.onload = (e) => {
+        const arrayBuffer = e.target?.result;
+        if (!(arrayBuffer instanceof ArrayBuffer)) {
           setParseError(t('import.couldNotRead'));
           return;
         }
-        const result = parseCSV(text, data.categoryRules);
+        const result = parsePKOXLSX(arrayBuffer, data.categoryRules);
         handleParseResult(result);
       };
-      reader.readAsText(file, encoding);
-    };
-    detector.readAsText(file, 'ascii');
+      reader.readAsArrayBuffer(file);
+    } else {
+      const detector = new FileReader();
+      detector.onload = (e) => {
+        const probe = e.target?.result;
+        if (typeof probe !== 'string') {
+          setParseError(t('import.couldNotRead'));
+          return;
+        }
+        const bank = detectBank(probe);
+        const encoding = BANK_ENCODINGS[bank];
+
+        const reader = new FileReader();
+        reader.onload = (e2) => {
+          const text = e2.target?.result;
+          if (typeof text !== 'string') {
+            setParseError(t('import.couldNotRead'));
+            return;
+          }
+          const result = parseCSV(text, data.categoryRules);
+          handleParseResult(result);
+        };
+        reader.readAsText(file, encoding);
+      };
+      detector.readAsText(file, 'ascii');
+    }
   }
 
   // ---- Drag & drop handlers ----
@@ -330,7 +347,7 @@ export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }:
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx,.xls"
               onChange={handleFileInputChange}
               className="hidden"
             />

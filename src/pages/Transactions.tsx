@@ -1105,26 +1105,20 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
                 })}
               </div>
             ) : (
-              <div className={`${GRID_COLS} bg-gray-900 border-t-2 border-gray-700`}>
-                <div className="px-3 py-2.5 col-span-3 text-xs text-gray-400 font-medium">
-                  {t('transactions.totals')} ({filtered.length} {filtered.length !== 1 ? t('transactions.transactions') : t('transactions.transaction')})
-                </div>
-                <div className="px-3 py-2.5" />
-                <div className="px-3 py-2.5 text-right">
-                  <div className="text-xs space-y-0.5">
-                    <div className="text-green-400">+{summary.income.toFixed(2)}</div>
-                    <div className="text-red-400">-{summary.expenses.toFixed(2)}</div>
-                    <div className={`font-semibold border-t border-gray-700 pt-0.5 ${summary.net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                      {summary.net >= 0 ? '+' : ''}{summary.net.toFixed(2)}
+              <div className="bg-gray-900 border-t-2 border-gray-700">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
+                  <div className="text-xs text-gray-400 font-medium">
+                    {t('transactions.totals')} ({filtered.length} {filtered.length !== 1 ? t('transactions.transactions') : t('transactions.transaction')})
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs space-y-0.5">
+                      <div className="text-green-400">+{summary.income.toFixed(2)}</div>
+                      <div className="text-red-400">-{summary.expenses.toFixed(2)}</div>
+                      <div className={`font-semibold border-t border-gray-700 pt-0.5 ${summary.net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                        {summary.net >= 0 ? '+' : ''}{summary.net.toFixed(2)}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="px-3 py-2.5 text-right">
-                  <div className={`text-xs font-semibold ${summary.net >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                    {summary.net >= 0 ? '+' : ''}{summary.net.toFixed(2)}
-                  </div>
-                </div>
-                <div className="px-3 py-2.5 col-span-3">
                   <div className="text-xs space-y-0.5">
                     {Object.entries(summary.byCurrency).map(([cur, totals]) => {
                       const net = totals.income - totals.expenses;
