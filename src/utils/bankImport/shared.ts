@@ -89,6 +89,8 @@ export const CATEGORY_KEYWORDS: Array<[string, ExpenseCategory | IncomeCategory]
   ['аптека оптових цін', 'Healthcare'],
   ['eva', 'Shopping'],
   ['biedronka', 'Food'],
+  ['hala banacha', 'Food'],
+  ['hale banach', 'Food'],
   ['lidl', 'Food'],
   ['żabka', 'Food'],
   ['zabka', 'Food'],

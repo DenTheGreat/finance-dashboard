@@ -49,7 +49,7 @@ export function extractPKOExtraColumns(fields: string[], txType: string): PKOExt
     return { description, counterparty: merchant };
   }
 
-  if (type === 'Płatność web - kod mobilny') {
+  if (type === 'Płatność web - kod mobilny' || type === 'Zakup w terminalu - kod mobilny') {
     const merchant = extractMerchant(f(8));
     const title = stripLabel(f(6), 'Tytuł');
     const description = merchant || title;
