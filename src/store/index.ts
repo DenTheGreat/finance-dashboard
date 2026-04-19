@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { AppData, Transaction, Debt, SavingsGoal, UserSettings } from '../types';
+import { INCOME_CATEGORIES } from '../types';
 
 const STORAGE_KEY = 'finance-dashboard-data';
 
@@ -58,7 +59,12 @@ export function updateTransaction(data: AppData, tx: Transaction): AppData {
 export function updateTransactionCategory(data: AppData, id: string, category: string): AppData {
   const tx = data.transactions.find((t) => t.id === id);
   if (!tx) return data;
-  return updateTransaction(data, { ...tx, category: category as Transaction['category'] });
+  const isIncome = INCOME_CATEGORIES.includes(category as typeof INCOME_CATEGORIES[number]);
+  return updateTransaction(data, {
+    ...tx,
+    category: category as Transaction['category'],
+    type: isIncome ? 'income' : 'expense',
+  });
 }
 
 export function updateTransactionFields(data: AppData, id: string, updates: Partial<Transaction>): AppData {

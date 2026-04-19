@@ -37,7 +37,18 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
   const [paymentInputs, setPaymentInputs] = useState<Record<string, string>>({});
   const [activePayment, setActivePayment] = useState<string | null>(null);
 
-  const debts = data.debts;
+  // Calculate paid amounts from linked transactions
+  const debtsWithLinkedPayments = data.debts.map(debt => {
+    const linkedTransactions = data.transactions.filter(tx => tx.debtId === debt.id);
+    const linkedTotal = linkedTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+    return {
+      ...debt,
+      paidAmount: Math.max(debt.paidAmount, linkedTotal),
+      linkedTransactions,
+    };
+  });
+
+  const debts = debtsWithLinkedPayments;
 
   // Summary calculations
   const totalDebt = debts.reduce(
@@ -285,6 +296,21 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                         {t('debts.makePayment')}
                       </button>
                     )}
+                  </div>
+                )}
+
+                {/* Linked transactions */}
+                {debt.linkedTransactions && debt.linkedTransactions.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-800">
+                    <p className="text-xs text-gray-500 mb-2">{t('debts.linkedTransactions')} ({debt.linkedTransactions.length})</p>
+                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                      {debt.linkedTransactions.map(tx => (
+                        <div key={tx.id} className="flex justify-between text-xs">
+                          <span className="text-gray-400 truncate flex-1">{tx.description || tx.date}</span>
+                          <span className="text-green-400 ml-2">+{formatCurrency(tx.amount, tx.currency)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

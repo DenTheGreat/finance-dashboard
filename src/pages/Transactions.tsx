@@ -543,8 +543,10 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
   // --- Running balance (saldo) per transaction ---
   const saldoMap = useMemo(() => {
     const map = new Map<string, number>();
-    // Accumulate from oldest to newest
-    const sorted = [...filtered].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    const sorted = [...filtered].sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return a.id.localeCompare(b.id);
+    });
     let running = 0;
     for (const t of sorted) {
       running += t.type === 'income' ? t.amount : -t.amount;
@@ -768,7 +770,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
           {tx.description || <span className="text-gray-500 italic">{t('transactions.noDescription')}</span>}
         </div>
         {/* Category -- inline dropdown */}
-        <div className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+        <div className="px-3 py-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <select
             value={tx.category}
             onChange={(e) => onUpdateCategory(tx.id, e.target.value)}
@@ -782,6 +784,20 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
               </option>
             ))}
           </select>
+          {tx.category === 'Debt Payment' && data.debts.length > 0 && (
+            <select
+              value={tx.debtId || ''}
+              onChange={(e) => onUpdate(tx.id, { debtId: e.target.value || undefined })}
+              onClick={(e) => e.stopPropagation()}
+              className="text-xs px-2 py-0.5 rounded border border-gray-600 bg-gray-800 text-gray-300 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary-500 max-w-[100px]"
+              title="Link to debt"
+            >
+              <option value="">{t('transactions.selectDebt')}</option>
+              {data.debts.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          )}
         </div>
         {/* Amount */}
         <div className="px-3 py-2 text-right whitespace-nowrap leading-tight">

@@ -60,6 +60,7 @@ export interface Transaction {
   notes?: string; // user notes
   recurring?: boolean;
   recurringInterval?: 'weekly' | 'monthly' | 'yearly';
+  debtId?: string; // linked debt ID if this is a debt payment
 }
 
 export interface Debt {
