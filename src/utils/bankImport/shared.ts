@@ -281,17 +281,50 @@ export function parseAmount(raw: string): number {
 
 export function parseDate(raw: string): string {
   const trimmed = raw.trim();
-  // Try YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-  // Try DD.MM.YYYY HH:MM:SS or DD.MM.YYYY HH:MM (Monobank / PrivatBank datetime)
-  const matchDT = trimmed.match(/^(\d{2})[.\-/](\d{2})[.\-/](\d{4})\s+\d{2}:\d{2}/);
-  if (matchDT) return `${matchDT[3]}-${matchDT[2]}-${matchDT[1]}`;
-  // Try DD.MM.YYYY or DD-MM-YYYY or DD/MM/YYYY
-  const match = trimmed.match(/^(\d{2})[.\-/](\d{2})[.\-/](\d{4})$/);
-  if (match) return `${match[3]}-${match[2]}-${match[1]}`;
-  // Try YYYY.MM.DD
-  const match2 = trimmed.match(/^(\d{4})[.\-/](\d{2})[.\-/](\d{2})$/);
-  if (match2) return `${match2[1]}-${match2[2]}-${match2[3]}`;
+  
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})[T\s]/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  }
+  
+  const europeanDT = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})\s+\d{2}:\d{2}/);
+  if (europeanDT) {
+    return `${europeanDT[3]}-${europeanDT[2]}-${europeanDT[1]}`;
+  }
+  
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(trimmed)) {
+    const [day, month, year] = trimmed.split('.');
+    return `${year}-${month}-${day}`;
+  }
+  
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+    const [part1, part2, year] = trimmed.split('/');
+    const num1 = parseInt(part1, 10);
+    const num2 = parseInt(part2, 10);
+    
+    if (num1 > 12) {
+      return `${year}-${part2}-${part1}`;
+    }
+    if (num2 > 12) {
+      return `${year}-${part1}-${part2}`;
+    }
+    return `${year}-${part2}-${part1}`;
+  }
+  
+  if (/^\d{2}-\d{2}-\d{4}$/.test(trimmed)) {
+    const [day, month, year] = trimmed.split('-');
+    return `${year}-${month}-${day}`;
+  }
+  
+  if (/^\d{4}\.\d{2}\.\d{2}$/.test(trimmed)) {
+    const [year, month, day] = trimmed.split('.');
+    return `${year}-${month}-${day}`;
+  }
+  
   return trimmed;
 }
 
