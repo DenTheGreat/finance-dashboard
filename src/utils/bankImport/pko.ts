@@ -121,6 +121,7 @@ export function parsePKO(
   appRules?: CategoryRule[],
 ): { transactions: ParsedBankTransaction[]; autoMapped: boolean; mapping: ColumnMapping; detectedCurrency?: Currency } {
   const dateIdx = findColumnIndex(headers, PKO_COLUMNS.date);
+  const valueDateIdx = findColumnIndex(headers, PKO_COLUMNS.valueDate);
   const amountIdx = findColumnIndex(headers, PKO_COLUMNS.amount);
   const descIdx = findColumnIndex(headers, PKO_COLUMNS.description);
   const currencyIdx = findColumnIndex(headers, PKO_COLUMNS.currency);
@@ -194,7 +195,11 @@ export function parsePKO(
 
     const suggestedCategory = isIncome && category === 'Other' ? 'Other Income' : category;
 
-    const parsedDate = parseDate(fields[mapping.date] || '');
+    let rawDate = fields[mapping.date] || '';
+    if (!rawDate && valueDateIdx !== -1) {
+      rawDate = fields[valueDateIdx] || '';
+    }
+    const parsedDate = parseDate(rawDate);
     if (!parsedDate) {
       continue;
     }

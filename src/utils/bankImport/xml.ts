@@ -2,66 +2,69 @@ import type { CategoryRule } from '../../types';
 import type { ParsedBankTransaction, ParseResult, ColumnMapping } from './types';
 import { detectCategory, parseAmount, parseDate } from './shared';
 
-interface PKOXmlTransaction {
-  DataOperacji?: string;
-  DataWaluty?: string;
-  TypTransakcji?: string;
-  Kwota?: string;
-  Waluta?: string;
-  SaldoPoTransakcji?: string;
-  OpisTransakcji?: string;
+interface PKOXmlOperation {
+  orderDate?: string;
+  execDate?: string;
+  type?: string;
+  description?: string;
+  amount?: string;
+  currency?: string;
+  endingBalance?: string;
 }
 
-function parseXmlToObject(xmlText: string): PKOXmlTransaction[] {
-  const transactions: PKOXmlTransaction[] = [];
+function parseOperations(xmlText: string): PKOXmlOperation[] {
+  const operations: PKOXmlOperation[] = [];
   
-  const transRegex = /<Transakcja[^>]*>([\s\S]*?)<\/Transakcja>/g;
+  const opRegex = /<operation>([\s\S]*?)<\/operation>/g;
   let match;
   
-  while ((match = transRegex.exec(xmlText)) !== null) {
-    const transContent = match[1];
-    const trans: PKOXmlTransaction = {};
+  while ((match = opRegex.exec(xmlText)) !== null) {
+    const content = match[1];
+    const op: PKOXmlOperation = {};
     
-    const fieldMappings: Record<string, keyof PKOXmlTransaction> = {
-      'DataOperacji': 'DataOperacji',
-      'DataWaluty': 'DataWaluty',
-      'TypTransakcji': 'TypTransakcji',
-      'Kwota': 'Kwota',
-      'Waluta': 'Waluta',
-      'SaldoPoTransakcji': 'SaldoPoTransakcji',
-      'OpisTransakcji': 'OpisTransakcji',
-    };
+    const orderDateMatch = content.match(/<order-date>([^<]*)<\/order-date>/);
+    if (orderDateMatch) op.orderDate = orderDateMatch[1].trim();
     
-    for (const [xmlField, objField] of Object.entries(fieldMappings)) {
-      const fieldRegex = new RegExp(`<${xmlField}>([^<]*)<\\/${xmlField}>`, 'i');
-      const fieldMatch = transContent.match(fieldRegex);
-      if (fieldMatch) {
-        trans[objField] = fieldMatch[1].trim();
-      }
-    }
+    const execDateMatch = content.match(/<exec-date>([^<]*)<\/exec-date>/);
+    if (execDateMatch) op.execDate = execDateMatch[1].trim();
     
-    transactions.push(trans);
+    const typeMatch = content.match(/<type>([^<]*)<\/type>/);
+    if (typeMatch) op.type = typeMatch[1].trim();
+    
+    const descMatch = content.match(/<description>([^<]*)<\/description>/);
+    if (descMatch) op.description = descMatch[1].trim();
+    
+    const amountMatch = content.match(/<amount[^>]*>([^<]*)<\/amount>/);
+    if (amountMatch) op.amount = amountMatch[1].trim();
+    
+    const currMatch = content.match(/<amount[^>]*curr="([^"]*)"/);
+    if (currMatch) op.currency = currMatch[1].trim();
+    
+    const balanceMatch = content.match(/<ending-balance[^>]*>([^<]*)<\/ending-balance>/);
+    if (balanceMatch) op.endingBalance = balanceMatch[1].trim();
+    
+    operations.push(op);
   }
   
-  return transactions;
+  return operations;
 }
 
-function extractDescription(opis: string): string {
-  if (!opis) return '';
+function extractDescription(desc: string): string {
+  if (!desc) return '';
   
-  const titleMatch = opis.match(/Tytu[łl]:\s*(.+?)(?:\s{2,}|$)/i);
+  const titleMatch = desc.match(/Tytu[łl]\s*:\s*(.+?)(?:\s{2,}|$)/i);
   if (titleMatch) {
     return titleMatch[1].trim();
   }
   
-  return opis.trim();
+  return desc.slice(0, 100).trim();
 }
 
-function extractCounterparty(opis: string): string {
-  if (!opis) return '';
+function extractCounterparty(desc: string): string {
+  if (!desc) return '';
   
-  const senderMatch = opis.match(/(?:Nazwa nadawcy|Nadawca|Od):\s*([^,\n]+)/i);
-  const receiverMatch = opis.match(/(?:Nazwa odbiorcy|Odbiorca|Do):\s*([^,\n]+)/i);
+  const senderMatch = desc.match(/Nazwa nadawcy\s*:\s*([^\n]+)/i);
+  const receiverMatch = desc.match(/Nazwa odbiorcy\s*:\s*([^\n]+)/i);
   
   return (senderMatch?.[1] || receiverMatch?.[1] || '').trim();
 }
@@ -70,9 +73,9 @@ export function parsePKOXml(
   xmlText: string,
   appRules?: CategoryRule[]
 ): ParseResult {
-  const xmlTransactions = parseXmlToObject(xmlText);
+  const operations = parseOperations(xmlText);
   
-  if (xmlTransactions.length === 0) {
+  if (operations.length === 0) {
     return {
       headers: [],
       transactions: [],
@@ -83,24 +86,23 @@ export function parsePKOXml(
   }
 
   const transactions: ParsedBankTransaction[] = [];
-  const headers = ['DataOperacji', 'TypTransakcji', 'Kwota', 'Waluta', 'OpisTransakcji'];
+  const headers = ['order-date', 'type', 'amount', 'description'];
 
-  for (const row of xmlTransactions) {
-    const rawAmount = row.Kwota || '';
-    const amount = parseAmount(rawAmount);
+  for (const op of operations) {
+    if (!op.amount) continue;
+    
+    const amount = parseAmount(op.amount);
     
     if (isNaN(amount) || amount === 0) continue;
 
     const isIncome = amount > 0;
-    const opis = row.OpisTransakcji || '';
-    const description = extractDescription(opis);
-    const counterparty = extractCounterparty(opis);
+    const description = extractDescription(op.description || '');
+    const counterparty = extractCounterparty(op.description || '');
     const fullDesc = counterparty ? `${counterparty} - ${description}` : description;
     
-    const rawCurrency = (row.Waluta || 'PLN').trim().toUpperCase();
-    const currency = rawCurrency === 'PLN' ? 'PLN' : rawCurrency === 'USD' ? 'USD' : rawCurrency === 'UAH' ? 'UAH' : 'PLN';
+    const currency = (op.currency || 'PLN').toUpperCase() as 'PLN' | 'USD' | 'UAH';
 
-    const rawDate = row.DataOperacji || '';
+    const rawDate = op.orderDate || op.execDate || '';
     const dateStr = parseDate(rawDate);
     
     if (!dateStr) continue;
@@ -108,7 +110,7 @@ export function parsePKOXml(
     const category = detectCategory(fullDesc, appRules);
     const suggestedCategory = isIncome && category === 'Other' ? 'Other Income' : category;
 
-    const txType = row.TypTransakcji || '';
+    const txType = op.type || '';
     let finalCategory = suggestedCategory;
     
     if (txType === 'WYMIANA W KANTORZE - UZNANIE' || txType === 'WYMIANA W KANTORZE - OBCIĄŻENIE') {
@@ -132,9 +134,9 @@ export function parsePKOXml(
       raw: [
         rawDate,
         txType,
-        rawAmount,
-        rawCurrency,
-        opis,
+        op.amount,
+        currency,
+        op.description || '',
       ],
     });
   }
