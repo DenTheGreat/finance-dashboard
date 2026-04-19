@@ -3,7 +3,7 @@ import type { ParsedBankTransaction, ParseResult, ColumnMapping } from './types'
 import { detectCategory, parseAmount, parseDate } from './shared';
 import * as XLSX from 'xlsx';
 
-interface PKOXLSXRow {
+interface PKOExcelRow {
   'Data operacji'?: string | Date;
   'Data waluty'?: string | Date;
   'Typ transakcji'?: string;
@@ -14,7 +14,7 @@ interface PKOXLSXRow {
   [key: string]: string | number | Date | undefined;
 }
 
-function extractDescription(row: PKOXLSXRow): string {
+function extractDescription(row: PKOExcelRow): string {
   const rawDesc = row['Opis transakcji'] || '';
   
   if (typeof rawDesc !== 'string') return String(rawDesc);
@@ -27,7 +27,7 @@ function extractDescription(row: PKOXLSXRow): string {
   return rawDesc.trim();
 }
 
-function extractCounterparty(row: PKOXLSXRow): string {
+function extractCounterparty(row: PKOExcelRow): string {
   const rawDesc = row['Opis transakcji'] || '';
   
   if (typeof rawDesc !== 'string') return '';
@@ -38,7 +38,7 @@ function extractCounterparty(row: PKOXLSXRow): string {
   return (senderMatch?.[1] || receiverMatch?.[1] || '').trim();
 }
 
-export function parsePKOXLSX(
+export function parsePKOExcel(
   arrayBuffer: ArrayBuffer,
   appRules?: CategoryRule[]
 ): ParseResult {
@@ -52,7 +52,7 @@ export function parsePKOXLSX(
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
   
-  const rows = XLSX.utils.sheet_to_json<PKOXLSXRow>(sheet, {
+  const rows = XLSX.utils.sheet_to_json<PKOExcelRow>(sheet, {
     defval: '',
     blankrows: false,
   });

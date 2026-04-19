@@ -16,7 +16,8 @@ import {
 } from '../types';
 import {
   parseCSV,
-  parsePKOXLSX,
+  parsePKOExcel,
+  parsePKOXml,
   detectBank,
   BANK_ENCODINGS,
   parseDate,
@@ -102,9 +103,10 @@ export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }:
 
   function processFile(file: File) {
     const isCSV = file.name.toLowerCase().endsWith('.csv');
-    const isXLSX = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    const isXLS = file.name.toLowerCase().endsWith('.xls');
+    const isXML = file.name.toLowerCase().endsWith('.xml');
     
-    if (!isCSV && !isXLSX) {
+    if (!isCSV && !isXLS && !isXML) {
       setParseError(t('import.selectValidFile'));
       return;
     }
@@ -112,7 +114,7 @@ export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }:
     setParseError(null);
     setFileName(file.name);
 
-    if (isXLSX) {
+    if (isXLS) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const arrayBuffer = e.target?.result;
@@ -120,10 +122,22 @@ export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }:
           setParseError(t('import.couldNotRead'));
           return;
         }
-        const result = parsePKOXLSX(arrayBuffer, data.categoryRules);
+        const result = parsePKOExcel(arrayBuffer, data.categoryRules);
         handleParseResult(result);
       };
       reader.readAsArrayBuffer(file);
+    } else if (isXML) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result;
+        if (typeof text !== 'string') {
+          setParseError(t('import.couldNotRead'));
+          return;
+        }
+        const result = parsePKOXml(text, data.categoryRules);
+        handleParseResult(result);
+      };
+      reader.readAsText(file, 'UTF-8');
     } else {
       const detector = new FileReader();
       detector.onload = (e) => {
@@ -347,7 +361,7 @@ export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }:
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.xlsx,.xls"
+              accept=".csv,.xls,.xml"
               onChange={handleFileInputChange}
               className="hidden"
             />
