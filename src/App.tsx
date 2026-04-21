@@ -227,6 +227,7 @@ export default function App() {
             element={
               <Planning
                 plannedExpenses={data.plannedExpenses}
+                primaryCurrency={data.settings.primaryCurrency}
                 onAddPlannedExpense={handleAddPlannedExpense}
                 onUpdatePlannedExpense={handleUpdatePlannedExpense}
                 onDeletePlannedExpense={handleDeletePlannedExpense}

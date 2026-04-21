@@ -7,6 +7,7 @@ import { useI18n } from '../i18n';
 
 interface PlanningProps {
   plannedExpenses: PlannedExpense[];
+  primaryCurrency: Currency;
   onAddPlannedExpense: (expense: Omit<PlannedExpense, 'id'>) => void;
   onUpdatePlannedExpense: (id: string, updates: Partial<PlannedExpense>) => void;
   onDeletePlannedExpense: (id: string) => void;
@@ -77,6 +78,7 @@ function formatNextDueDate(date: Date | null, formatDate: (iso: string) => strin
 
 export default function Planning({
   plannedExpenses,
+  primaryCurrency,
   onAddPlannedExpense,
   onUpdatePlannedExpense,
   onDeletePlannedExpense,
@@ -85,7 +87,7 @@ export default function Planning({
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(defaultForm('USD'));
+  const [form, setForm] = useState<FormState>(defaultForm(primaryCurrency));
 
   const activeExpenses = useMemo(
     () => plannedExpenses.filter((e) => e.isActive),
@@ -229,12 +231,12 @@ export default function Planning({
 
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-center gap-4">
           <div className="bg-emerald-500/10 p-3 rounded-lg">
-            <span className="text-emerald-400 font-bold text-sm">$</span>
+            <span className="text-emerald-400 font-bold text-sm">{primaryCurrency === 'USD' ? '$' : primaryCurrency === 'PLN' ? 'zł' : '₴'}</span>
           </div>
           <div>
             <p className="text-gray-400 text-xs uppercase tracking-wide">Monthly Estimate</p>
             <p className="text-white font-semibold text-lg mt-0.5">
-              {formatCurrency(totalMonthlyEstimate, 'USD')}
+              {formatCurrency(totalMonthlyEstimate, primaryCurrency)}
             </p>
           </div>
         </div>
