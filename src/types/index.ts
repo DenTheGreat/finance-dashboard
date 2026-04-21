@@ -38,7 +38,7 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
 ];
 
 export const NEEDS_CATEGORIES: ExpenseCategory[] = [
-  'Housing', 'Transportation', 'Food', 'Utilities', 'Healthcare', 'Insurance', 'Taxes',
+  'Housing', 'Transportation', 'Food', 'Utilities', 'Healthcare', 'Insurance',
 ];
 
 export const WANTS_CATEGORIES: ExpenseCategory[] = [

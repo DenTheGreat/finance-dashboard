@@ -9,6 +9,7 @@ interface BudgetBreakdown {
   wants: number;
   savings: number;
   debtPayments: number;
+  taxes: number;
   netBalance: number;
 }
 
@@ -49,6 +50,7 @@ export function getMonthlyBreakdown(
   let needs = 0;
   let wants = 0;
   let debtPayments = 0;
+  let taxes = 0;
 
   for (const t of monthTransactions) {
     const rate = t.exchangeRateAtTime ?? exchangeRate;
@@ -59,6 +61,8 @@ export function getMonthlyBreakdown(
       totalExpenses += amount;
       if (t.category === 'Debt Payment') {
         debtPayments += amount;
+      } else if (t.category === 'Taxes') {
+        taxes += amount;
       } else if (NEEDS.has(t.category)) {
         needs += amount;
       } else if (WANTS.has(t.category)) {
@@ -76,6 +80,7 @@ export function getMonthlyBreakdown(
     wants,
     savings: totalIncome - totalExpenses,
     debtPayments,
+    taxes,
     netBalance: totalIncome - totalExpenses,
   };
 }

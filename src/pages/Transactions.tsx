@@ -352,6 +352,11 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
   // --- Detail panel ---
   const [selectedTx, setSelectedTx] = useState<string | null>(null);
   const [notesInput, setNotesInput] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCurrency, setEditCurrency] = useState<import('../types').Currency>('USD');
+  const [editExchangeRate, setEditExchangeRate] = useState('');
 
   // --- Add form ---
   const [showForm, setShowForm] = useState(false);
@@ -681,16 +686,44 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
     const tx = data.transactions.find((t) => t.id === id);
     setSelectedTx(id);
     setNotesInput(tx?.notes ?? '');
+    setEditDate(tx?.date ?? '');
+    setEditDescription(tx?.description ?? '');
+    setEditAmount(tx?.amount?.toString() ?? '');
+    setEditCurrency(tx?.currency ?? 'USD');
+    setEditExchangeRate(tx?.exchangeRateAtTime?.toString() ?? '');
   }
 
   function closeDetail() {
     setSelectedTx(null);
     setNotesInput('');
+    setEditDate('');
+    setEditDescription('');
+    setEditAmount('');
+    setEditCurrency('USD');
+    setEditExchangeRate('');
   }
 
   function handleSaveNotes() {
     if (!selectedTx) return;
     onUpdate(selectedTx, { notes: notesInput });
+  }
+
+  function handleSaveChanges() {
+    if (!selectedTx) return;
+    const updates: Partial<Transaction> = {};
+    if (editDate) updates.date = editDate;
+    updates.description = editDescription;
+    if (editAmount !== '') {
+      const parsed = parseFloat(editAmount);
+      if (!isNaN(parsed) && parsed >= 0) updates.amount = parsed;
+    }
+    updates.currency = editCurrency;
+    if (editCurrency !== data.settings.primaryCurrency && editExchangeRate !== '') {
+      const parsed = parseFloat(editExchangeRate);
+      if (!isNaN(parsed) && parsed > 0) updates.exchangeRateAtTime = parsed;
+    }
+    updates.notes = notesInput;
+    onUpdate(selectedTx, updates);
   }
 
   // --- CSV export ---
@@ -1240,13 +1273,24 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
               <div className="px-5 py-4 space-y-4">
                 {/* Date & Description */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500">{t('transactions.date')}</span>
-                    <span className="text-gray-200">{formatDate(tx.date)}</span>
+                    <input
+                      type="date"
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
                   </div>
-                  <div className="flex justify-between text-sm gap-4">
+                  <div className="flex justify-between items-center text-sm gap-4">
                     <span className="text-gray-500 shrink-0">{t('transactions.description')}</span>
-                    <span className="text-gray-200 text-right">{tx.description || <span className="text-gray-500 italic">{t('transactions.noDescription')}</span>}</span>
+                    <input
+                      type="text"
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder={t('transactions.noDescription')}
+                      className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 text-right focus:outline-none focus:ring-1 focus:ring-primary-500 w-48"
+                    />
                   </div>
                   <div className="flex justify-between text-sm gap-4">
                     <span className="text-gray-500 shrink-0">{t('transactions.counterparty')}</span>
@@ -1262,22 +1306,56 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
                 {/* Amount */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500">{t('transactions.amount')}</span>
-                    <span className={`font-semibold ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
-                      {isIncome ? '+' : '-'}{formatCurrency(tx.amount, tx.currency)}
-                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editAmount}
+                      onChange={(e) => setEditAmount(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 font-semibold text-right w-28 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    />
                   </div>
-                  {convertedAmount !== null && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500"></span>
-                      <span className="text-gray-400">≈{formatCurrency(convertedAmount, data.settings.primaryCurrency)}</span>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500">{t('transactions.currency')}</span>
+                    <select
+                      value={editCurrency}
+                      onChange={(e) => setEditCurrency(e.target.value as import('../types').Currency)}
+                      className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="PLN">PLN</option>
+                      <option value="UAH">UAH</option>
+                    </select>
+                  </div>
+                  {editCurrency !== data.settings.primaryCurrency && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-500">{t('transactions.exchangeRate')}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={editExchangeRate}
+                        onChange={(e) => setEditExchangeRate(e.target.value)}
+                        placeholder={String(data.settings.exchangeRate)}
+                        className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 text-right w-28 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      />
                     </div>
                   )}
-                  {tx.exchangeRateAtTime && (
+                  {editCurrency !== data.settings.primaryCurrency && editAmount && !isNaN(parseFloat(editAmount)) && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">{t('transactions.exchangeRate')}</span>
-                      <span className="text-gray-400">{tx.exchangeRateAtTime}</span>
+                      <span className="text-gray-500"></span>
+                      <span className="text-gray-400">≈{formatCurrency(
+                        convertCurrency(
+                          parseFloat(editAmount),
+                          editCurrency,
+                          data.settings.primaryCurrency,
+                          editExchangeRate ? parseFloat(editExchangeRate) : data.settings.exchangeRate,
+                          data.settings.exchangeRates,
+                        ),
+                        data.settings.primaryCurrency,
+                      )}</span>
                     </div>
                   )}
                 </div>
@@ -1324,11 +1402,23 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
                     rows={3}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                   />
+                </div>
+
+                <div className="border-t border-gray-800" />
+
+                {/* Save / Cancel */}
+                <div className="flex gap-3">
                   <button
-                    onClick={handleSaveNotes}
-                    className="w-full bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                    onClick={handleSaveChanges}
+                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
                   >
-                    {t('transactions.saveNotes')}
+                    {t('common.save')}
+                  </button>
+                  <button
+                    onClick={closeDetail}
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-medium py-2 rounded-lg transition-colors"
+                  >
+                    {t('transactions.cancel')}
                   </button>
                 </div>
               </div>
