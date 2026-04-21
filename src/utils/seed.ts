@@ -179,6 +179,8 @@ export function generateSeedData(): AppData {
     transactions,
     debts,
     savingsGoals,
+    plannedExpenses: [],
+    monthlyBudgets: [],
     settings: {
       primaryCurrency: 'USD',
       exchangeRate: 4.05,

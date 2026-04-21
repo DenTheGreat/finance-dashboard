@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, X, Calendar, Pencil, ToggleLeft, ToggleRight } from 'lucide-react';
-import { addMonths, addYears, format, isBefore, isAfter, startOfDay, startOfMonth } from 'date-fns';
+import { addMonths, addYears, format, isBefore, isAfter, startOfDay } from 'date-fns';
 import type { PlannedExpense, Currency, ExpenseCategory, Recurrence } from '../types';
 import { EXPENSE_CATEGORIES } from '../types';
 import { useI18n } from '../i18n';

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { AppData, Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense, MonthlyBudget, ExpenseCategory } from '../types';
+import type { AppData, Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense, ExpenseCategory } from '../types';
 import { INCOME_CATEGORIES } from '../types';
 
 const STORAGE_KEY = 'finance-dashboard-data';
