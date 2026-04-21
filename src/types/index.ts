@@ -94,6 +94,28 @@ export interface UserSettings {
   theme?: 'dark' | 'light';
 }
 
+export type Recurrence = 'once' | 'monthly' | 'yearly';
+
+export interface PlannedExpense {
+  id: string;
+  name: string;
+  amount: number;
+  currency: Currency;
+  category: ExpenseCategory;
+  recurrence: Recurrence;
+  startDate: string; // YYYY-MM-DD
+  endDate?: string; // optional
+  isActive: boolean;
+  notes?: string;
+  linkedTransactionIds?: string[];
+}
+
+export interface MonthlyBudget {
+  month: string; // YYYY-MM format
+  category: ExpenseCategory;
+  amount: number;
+}
+
 export interface CategoryRule {
   keyword: string;
   category: string;
@@ -103,6 +125,8 @@ export interface AppData {
   transactions: Transaction[];
   debts: Debt[];
   savingsGoals: SavingsGoal[];
+  plannedExpenses: PlannedExpense[];
+  monthlyBudgets: MonthlyBudget[];
   settings: UserSettings;
   categoryRules?: CategoryRule[];
 }

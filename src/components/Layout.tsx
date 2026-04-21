@@ -10,6 +10,7 @@ import {
   Menu,
   Sun,
   Moon,
+  Calendar,
 } from 'lucide-react'
 import type { Currency, UserSettings } from '../types'
 import { useI18n } from '../i18n'
@@ -20,6 +21,7 @@ const navLinks = [
   { to: '/transactions', labelKey: 'nav.transactions', icon: ArrowLeftRight },
   { to: '/debts', labelKey: 'nav.debts', icon: CreditCard },
   { to: '/savings', labelKey: 'nav.savings', icon: PiggyBank },
+  { to: '/planning', labelKey: 'planning.title', icon: Calendar },
   { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ]
 

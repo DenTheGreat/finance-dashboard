@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { AppData, Transaction, Debt, SavingsGoal, UserSettings } from '../types';
+import type { AppData, Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense, MonthlyBudget, ExpenseCategory } from '../types';
 import { INCOME_CATEGORIES } from '../types';
 
 const STORAGE_KEY = 'finance-dashboard-data';
@@ -8,9 +8,11 @@ const DEFAULT_DATA: AppData = {
   transactions: [],
   debts: [],
   savingsGoals: [],
+  plannedExpenses: [],
+  monthlyBudgets: [],
   settings: {
     primaryCurrency: 'PLN',
-    exchangeRate: 4.05, // approximate USD to PLN
+    exchangeRate: 4.05,
     autoExchangeRate: true,
     monthlyBudget: undefined,
   },
@@ -25,6 +27,8 @@ export function loadData(): AppData {
       transactions: parsed.transactions || [],
       debts: parsed.debts || [],
       savingsGoals: parsed.savingsGoals || [],
+      plannedExpenses: parsed.plannedExpenses || [],
+      monthlyBudgets: parsed.monthlyBudgets || [],
       settings: { ...DEFAULT_DATA.settings, ...parsed.settings },
       categoryRules: parsed.categoryRules || [],
     };
@@ -158,6 +162,58 @@ export function deleteSavingsGoal(data: AppData, id: string): AppData {
   };
   saveData(updated);
   return updated;
+}
+
+// Planned Expenses
+export function addPlannedExpense(data: AppData, expense: Omit<PlannedExpense, 'id'>): AppData {
+  const updated = {
+    ...data,
+    plannedExpenses: [...data.plannedExpenses, { ...expense, id: uuidv4() }],
+  };
+  saveData(updated);
+  return updated;
+}
+
+export function updatePlannedExpense(data: AppData, id: string, updates: Partial<PlannedExpense>): AppData {
+  const updated = {
+    ...data,
+    plannedExpenses: data.plannedExpenses.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+  };
+  saveData(updated);
+  return updated;
+}
+
+export function deletePlannedExpense(data: AppData, id: string): AppData {
+  const updated = {
+    ...data,
+    plannedExpenses: data.plannedExpenses.filter((e) => e.id !== id),
+  };
+  saveData(updated);
+  return updated;
+}
+
+// Monthly Budgets
+export function setCategoryBudget(data: AppData, month: string, category: ExpenseCategory, amount: number): AppData {
+  const existing = data.monthlyBudgets.findIndex(b => b.month === month && b.category === category);
+  if (existing !== -1) {
+    const updated = {
+      ...data,
+      monthlyBudgets: data.monthlyBudgets.map((b, i) => i === existing ? { ...b, amount } : b),
+    };
+    saveData(updated);
+    return updated;
+  }
+  const updated = {
+    ...data,
+    monthlyBudgets: [...data.monthlyBudgets, { month, category, amount }],
+  };
+  saveData(updated);
+  return updated;
+}
+
+export function getCategoryBudget(data: AppData, month: string, category: ExpenseCategory): number {
+  const budget = data.monthlyBudgets.find(b => b.month === month && b.category === category);
+  return budget?.amount ?? 0;
 }
 
 // Settings

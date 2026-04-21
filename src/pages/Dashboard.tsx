@@ -7,13 +7,15 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Wallet, TrendingUp, TrendingDown, Target, X, Search } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, X, Search, Calendar, ArrowRight } from 'lucide-react';
 import type { AppData, Transaction } from '../types';
+import { CATEGORY_COLORS } from '../types';
 import {
   getMonthlyBreakdown,
   getSavingsAdvice,
   getExpensesByCategory,
 } from '../utils/advisor';
+import { calculatePlannedVsActual, getUpcomingPlannedExpenses } from '../utils/planning';
 import { useI18n } from '../i18n';
 
 interface DashboardProps {
@@ -143,6 +145,19 @@ export default function Dashboard({ data }: DashboardProps) {
   const savingsRate = breakdown.totalIncome > 0
     ? (breakdown.netBalance / breakdown.totalIncome) * 100
     : 0;
+
+  // Planned vs Actual for current month
+  const currentMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const plannedVsActual = useMemo(
+    () => calculatePlannedVsActual(data, currentMonth),
+    [data, currentMonth],
+  );
+
+  // Upcoming planned expenses (next 30 days)
+  const upcomingExpenses = useMemo(
+    () => getUpcomingPlannedExpenses(data.plannedExpenses, now, 30),
+    [data.plannedExpenses],
+  );
 
   const STATUS_BADGE: Record<
     'excellent' | 'good' | 'fair' | 'needs_attention',
@@ -384,6 +399,125 @@ export default function Dashboard({ data }: DashboardProps) {
           </ul>
         </div>
       </div>
+
+      {/* Planned vs Actual + Upcoming Expenses */}
+      {(plannedVsActual.byCategory.length > 0 || upcomingExpenses.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Planned vs Actual */}
+          {plannedVsActual.byCategory.length > 0 && (
+            <div className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800">
+              <h2 className="text-base font-semibold text-white mb-4">
+                {t('planning.plannedVsActual')}
+              </h2>
+              <div className="space-y-2">
+                {plannedVsActual.byCategory.map((item) => {
+                  const color = CATEGORY_COLORS[item.category] || '#64748b';
+                  const isOver = item.remaining < 0;
+                  return (
+                    <div key={item.category} className="flex items-center gap-3">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span className="text-sm text-gray-300 w-24 truncate">{tc(item.category)}</span>
+                      <div className="flex-1 flex items-center justify-end gap-2 text-xs">
+                        <span className="text-gray-400">{formatCurrency(item.planned, primaryCurrency)}</span>
+                        <span className="text-gray-600">/</span>
+                        <span className="text-red-400">-{formatCurrency(item.actual, primaryCurrency)}</span>
+                        <span
+                          className={`font-semibold min-w-[60px] text-right ${
+                            isOver ? 'text-red-400' : 'text-green-400'
+                          }`}
+                        >
+                          {isOver ? '' : '+'}{formatCurrency(item.remaining, primaryCurrency)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="border-t border-gray-800 pt-2 mt-2 flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 rounded-full shrink-0 bg-white/20" />
+                  <span className="text-sm font-semibold text-white w-24">{t('planning.total')}</span>
+                  <div className="flex-1 flex items-center justify-end gap-2 text-xs">
+                    <span className="text-gray-300 font-semibold">{formatCurrency(plannedVsActual.totalPlanned, primaryCurrency)}</span>
+                    <span className="text-gray-600">/</span>
+                    <span className="text-red-400 font-semibold">-{formatCurrency(plannedVsActual.totalActual, primaryCurrency)}</span>
+                    <span
+                      className={`font-bold min-w-[60px] text-right ${
+                        plannedVsActual.totalRemaining < 0 ? 'text-red-400' : 'text-green-400'
+                      }`}
+                    >
+                      {plannedVsActual.totalRemaining < 0 ? '' : '+'}{formatCurrency(plannedVsActual.totalRemaining, primaryCurrency)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Upcoming Expenses */}
+          <div className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold text-white">
+                {t('planning.upcoming')}
+              </h2>
+              <Link
+                to="/planning"
+                className="text-sm text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1"
+              >
+                {t('planning.viewAllPlanning')}
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+            {upcomingExpenses.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingExpenses.slice(0, 5).map((expense) => {
+                  const expenseDate = new Date(expense.startDate);
+                  const daysUntil = Math.ceil(
+                    (expenseDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+                  );
+                  const color = CATEGORY_COLORS[expense.category] || '#64748b';
+                  return (
+                    <div key={expense.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-sm text-white truncate">{expense.name}</p>
+                          <p className="text-xs text-gray-500">{tc(expense.category)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 ml-3">
+                        <span className="text-sm font-semibold text-gray-300">
+                          {formatCurrency(expense.amount, expense.currency)}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            daysUntil <= 3
+                              ? 'bg-red-500/20 text-red-400'
+                              : daysUntil <= 7
+                                ? 'bg-yellow-500/20 text-yellow-400'
+                                : 'bg-gray-700 text-gray-400'
+                          }`}
+                        >
+                          <Calendar size={10} className="inline mr-1" />
+                          {daysUntil <= 0 ? t('planning.nextDue') : t('planning.daysUntil').replace('{days}', String(daysUntil))}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-6">
+                {t('planning.noUpcomingExpenses')}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Bottom row - Recent Transactions */}
       <div className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800">

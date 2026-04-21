@@ -6,7 +6,8 @@ import Transactions from './pages/Transactions';
 import Debts from './pages/Debts';
 import Savings from './pages/Savings';
 import Settings from './pages/Settings';
-import type { Transaction, Debt, SavingsGoal, UserSettings } from './types';
+import Planning from './pages/Planning';
+import type { Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense } from './types';
 import { I18nContext, createI18nValue } from './i18n';
 import type { Locale } from './i18n';
 import {
@@ -24,6 +25,9 @@ import {
   addSavingsGoal,
   updateSavingsGoal,
   deleteSavingsGoal,
+  addPlannedExpense,
+  updatePlannedExpense,
+  deletePlannedExpense,
   updateSettings,
   exportData,
   importData,
@@ -118,6 +122,18 @@ export default function App() {
     setData((prev) => deleteSavingsGoal(prev, id));
   }, []);
 
+  const handleAddPlannedExpense = useCallback((expense: Omit<PlannedExpense, 'id'>) => {
+    setData((prev) => addPlannedExpense(prev, expense));
+  }, []);
+
+  const handleUpdatePlannedExpense = useCallback((id: string, updates: Partial<PlannedExpense>) => {
+    setData((prev) => updatePlannedExpense(prev, id, updates));
+  }, []);
+
+  const handleDeletePlannedExpense = useCallback((id: string) => {
+    setData((prev) => deletePlannedExpense(prev, id));
+  }, []);
+
   const handleUpdateSettings = useCallback((settings: Partial<UserSettings>) => {
     setData((prev) => updateSettings(prev, settings));
   }, []);
@@ -203,6 +219,17 @@ export default function App() {
                 onAdd={handleAddSavingsGoal}
                 onUpdate={handleUpdateSavingsGoal}
                 onDelete={handleDeleteSavingsGoal}
+              />
+            }
+          />
+          <Route
+            path="/planning"
+            element={
+              <Planning
+                plannedExpenses={data.plannedExpenses}
+                onAddPlannedExpense={handleAddPlannedExpense}
+                onUpdatePlannedExpense={handleUpdatePlannedExpense}
+                onDeletePlannedExpense={handleDeletePlannedExpense}
               />
             }
           />
