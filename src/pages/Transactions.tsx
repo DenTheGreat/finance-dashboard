@@ -703,11 +703,6 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
     setEditExchangeRate('');
   }
 
-  function handleSaveNotes() {
-    if (!selectedTx) return;
-    onUpdate(selectedTx, { notes: notesInput });
-  }
-
   function handleSaveChanges() {
     if (!selectedTx) return;
     const updates: Partial<Transaction> = {};
@@ -1245,9 +1240,6 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
         const cats = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
         const color = CATEGORY_COLORS[tx.category] ?? '#64748b';
         const saldo = saldoMap.get(tx.id) ?? 0;
-        const convertedAmount = tx.currency !== data.settings.primaryCurrency
-          ? convertCurrency(tx.amount, tx.currency, data.settings.primaryCurrency, tx.exchangeRateAtTime ?? data.settings.exchangeRate, data.settings.exchangeRates)
-          : null;
 
         return (
           <>
