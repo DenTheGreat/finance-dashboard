@@ -7,7 +7,7 @@ import Debts from './pages/Debts';
 import Savings from './pages/Savings';
 import Settings from './pages/Settings';
 import Planning from './pages/Planning';
-import type { Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense } from './types';
+import type { Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense, PlannedIncome } from './types';
 import { I18nContext, createI18nValue } from './i18n';
 import type { Locale } from './i18n';
 import {
@@ -28,6 +28,9 @@ import {
   addPlannedExpense,
   updatePlannedExpense,
   deletePlannedExpense,
+  addPlannedIncome,
+  updatePlannedIncome,
+  deletePlannedIncome,
   updateSettings,
   exportData,
   importData,
@@ -134,6 +137,18 @@ export default function App() {
     setData((prev) => deletePlannedExpense(prev, id));
   }, []);
 
+  const handleAddPlannedIncome = useCallback((income: Omit<PlannedIncome, 'id'>) => {
+    setData((prev) => addPlannedIncome(prev, income));
+  }, []);
+
+  const handleUpdatePlannedIncome = useCallback((id: string, updates: Partial<PlannedIncome>) => {
+    setData((prev) => updatePlannedIncome(prev, id, updates));
+  }, []);
+
+  const handleDeletePlannedIncome = useCallback((id: string) => {
+    setData((prev) => deletePlannedIncome(prev, id));
+  }, []);
+
   const handleUpdateSettings = useCallback((settings: Partial<UserSettings>) => {
     setData((prev) => updateSettings(prev, settings));
   }, []);
@@ -227,10 +242,14 @@ export default function App() {
             element={
               <Planning
                 plannedExpenses={data.plannedExpenses}
+                plannedIncomes={data.plannedIncomes || []}
                 primaryCurrency={data.settings.primaryCurrency}
                 onAddPlannedExpense={handleAddPlannedExpense}
                 onUpdatePlannedExpense={handleUpdatePlannedExpense}
                 onDeletePlannedExpense={handleDeletePlannedExpense}
+                onAddPlannedIncome={handleAddPlannedIncome}
+                onUpdatePlannedIncome={handleUpdatePlannedIncome}
+                onDeletePlannedIncome={handleDeletePlannedIncome}
               />
             }
           />

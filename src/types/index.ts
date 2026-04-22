@@ -110,6 +110,20 @@ export interface PlannedExpense {
   linkedTransactionIds?: string[];
 }
 
+export interface PlannedIncome {
+  id: string;
+  name: string;
+  amount: number;
+  currency: Currency;
+  category: IncomeCategory;
+  recurrence: Recurrence;
+  startDate: string; // YYYY-MM-DD
+  endDate?: string;
+  isActive: boolean;
+  notes?: string;
+  linkedTransactionIds?: string[];
+}
+
 export interface MonthlyBudget {
   month: string; // YYYY-MM format
   category: ExpenseCategory;
@@ -126,6 +140,7 @@ export interface AppData {
   debts: Debt[];
   savingsGoals: SavingsGoal[];
   plannedExpenses: PlannedExpense[];
+  plannedIncomes: PlannedIncome[];
   monthlyBudgets: MonthlyBudget[];
   settings: UserSettings;
   categoryRules?: CategoryRule[];

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { AppData, Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense, ExpenseCategory } from '../types';
+import type { AppData, Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense, PlannedIncome, ExpenseCategory } from '../types';
 import { INCOME_CATEGORIES } from '../types';
 
 const STORAGE_KEY = 'finance-dashboard-data';
@@ -9,6 +9,7 @@ const DEFAULT_DATA: AppData = {
   debts: [],
   savingsGoals: [],
   plannedExpenses: [],
+  plannedIncomes: [],
   monthlyBudgets: [],
   settings: {
     primaryCurrency: 'PLN',
@@ -28,6 +29,7 @@ export function loadData(): AppData {
       debts: parsed.debts || [],
       savingsGoals: parsed.savingsGoals || [],
       plannedExpenses: parsed.plannedExpenses || [],
+      plannedIncomes: parsed.plannedIncomes || [],
       monthlyBudgets: parsed.monthlyBudgets || [],
       settings: { ...DEFAULT_DATA.settings, ...parsed.settings },
       categoryRules: parsed.categoryRules || [],
@@ -187,6 +189,34 @@ export function deletePlannedExpense(data: AppData, id: string): AppData {
   const updated = {
     ...data,
     plannedExpenses: data.plannedExpenses.filter((e) => e.id !== id),
+  };
+  saveData(updated);
+  return updated;
+}
+
+// Planned Incomes
+export function addPlannedIncome(data: AppData, income: Omit<PlannedIncome, 'id'>): AppData {
+  const updated = {
+    ...data,
+    plannedIncomes: [...(data.plannedIncomes || []), { ...income, id: uuidv4() }],
+  };
+  saveData(updated);
+  return updated;
+}
+
+export function updatePlannedIncome(data: AppData, id: string, updates: Partial<PlannedIncome>): AppData {
+  const updated = {
+    ...data,
+    plannedIncomes: (data.plannedIncomes || []).map((e) => (e.id === id ? { ...e, ...updates } : e)),
+  };
+  saveData(updated);
+  return updated;
+}
+
+export function deletePlannedIncome(data: AppData, id: string): AppData {
+  const updated = {
+    ...data,
+    plannedIncomes: (data.plannedIncomes || []).filter((e) => e.id !== id),
   };
   saveData(updated);
   return updated;

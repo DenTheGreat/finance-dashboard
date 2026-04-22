@@ -180,6 +180,7 @@ export function generateSeedData(): AppData {
     debts,
     savingsGoals,
     plannedExpenses: [],
+    plannedIncomes: [],
     monthlyBudgets: [],
     settings: {
       primaryCurrency: 'USD',
