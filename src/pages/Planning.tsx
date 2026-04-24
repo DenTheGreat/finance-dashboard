@@ -530,7 +530,7 @@ export default function Planning({
 
       {/* Add/Edit Dialog */}
       <Dialog open={showModal} onOpenChange={(open) => { setShowModal(open); if (!open) setEditingId(null); }}>
-        <DialogContent className="bg-gray-900 border-gray-800 text-white max-h-[90vh] overflow-y-auto sm:max-w-md">
+        <DialogContent className="bg-gray-900 border-gray-800 text-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editingId
