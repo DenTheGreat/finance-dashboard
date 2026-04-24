@@ -54,7 +54,8 @@ export function getMonthlyBreakdown(
 
   for (const t of monthTransactions) {
     const rate = t.exchangeRateAtTime ?? exchangeRate;
-    const amount = convertCurrency(t.amount, t.currency, primaryCurrency, rate, exchangeRates);
+    const rates = t.exchangeRatesAtTime ?? exchangeRates;
+    const amount = convertCurrency(t.amount, t.currency, primaryCurrency, rate, rates);
     if (t.type === 'income') {
       totalIncome += amount;
     } else {
@@ -174,7 +175,8 @@ export function getExpensesByCategory(
   const byCategory = new Map<string, number>();
   for (const t of monthExpenses) {
     const rate = t.exchangeRateAtTime ?? exchangeRate;
-    const amount = convertCurrency(t.amount, t.currency, primaryCurrency, rate, exchangeRates);
+    const rates = t.exchangeRatesAtTime ?? exchangeRates;
+    const amount = convertCurrency(t.amount, t.currency, primaryCurrency, rate, rates);
     byCategory.set(t.category, (byCategory.get(t.category) || 0) + amount);
   }
 

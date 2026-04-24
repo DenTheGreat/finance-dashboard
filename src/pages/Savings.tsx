@@ -1,9 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { differenceInDays } from 'date-fns';
 import { Plus, Trash2, X, PiggyBank, Target } from 'lucide-react';
 import type { AppData, SavingsGoal } from '../types';
 import { getMonthlyBreakdown, getSavingsAdvice } from '../utils/advisor';
 import { useI18n } from '../i18n';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 
 interface SavingsProps {
   data: AppData;
@@ -75,15 +92,8 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
 
   const statusCfg = STATUS_CONFIG[advice.status];
 
-  useEffect(() => {
-    if (!showModal) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowModal(false); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [showModal]);
-
   // --- Handlers ---
-  function handleFormChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+  function handleFormChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
@@ -130,14 +140,14 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
           <h1 className="text-xl sm:text-2xl font-bold text-white">{t('savings.title')}</h1>
           <p className="text-gray-400 text-sm mt-1">{t('savings.subtitle')}</p>
         </div>
-        <button
+        <Button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors shrink-0 min-h-[44px]"
+          className="flex items-center gap-2 shrink-0 min-h-[44px]"
         >
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">{t('savings.addGoal')}</span>
           <span className="sm:hidden">{t('common.add')}</span>
-        </button>
+        </Button>
       </div>
 
       {/* Savings Advisor Panel */}
@@ -221,7 +231,7 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
           <ul className="space-y-1.5">
             {advice.tips.map((tip, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                <span className="text-primary-400 mt-0.5 shrink-0">{'\u2022'}</span>
+                <span className="text-primary-400 mt-0.5 shrink-0">•</span>
                 {t(tip)}
               </li>
             ))}
@@ -235,13 +245,13 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
           <PiggyBank className="h-14 w-14 text-gray-700 mb-4" />
           <p className="text-gray-400 text-lg font-medium">{t('savings.noGoals')}</p>
           <p className="text-gray-600 text-sm mt-1 mb-5">{t('savings.addGoalPrompt')}</p>
-          <button
+          <Button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
             {t('savings.addGoal')}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -265,13 +275,15 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                     <PiggyBank className="h-5 w-5 text-primary-400 shrink-0" />
                     <h3 className="text-white font-semibold truncate">{goal.name}</h3>
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => onDelete(goal.id)}
-                    className="text-gray-600 hover:text-red-400 transition-colors shrink-0 p-0.5"
+                    className="text-gray-600 hover:text-red-400 shrink-0"
                     aria-label={t('common.delete')}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Progress bar */}
@@ -334,14 +346,14 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                   <div className="pt-1 border-t border-gray-800">
                     {addFundsId === goal.id ? (
                       <div className="flex gap-2">
-                        <input
+                        <Input
                           type="number"
                           min="0"
                           step="0.01"
                           placeholder={t('form.amount')}
                           value={addFundsAmount}
                           onChange={(e) => setAddFundsAmount(e.target.value)}
-                          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                          className="flex-1 min-h-[44px]"
                           autoFocus
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleAddFunds(goal);
@@ -351,21 +363,23 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
                             }
                           }}
                         />
-                        <button
+                        <Button
                           onClick={() => handleAddFunds(goal)}
-                          className="px-3 py-1.5 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors"
+                          className="min-h-[44px]"
                         >
                           {t('savings.add')}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => {
                             setAddFundsId(null);
                             setAddFundsAmount('');
                           }}
-                          className="px-2 py-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+                          className="text-gray-500 hover:text-gray-300 min-h-[44px]"
                         >
                           <X className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <button
@@ -388,123 +402,107 @@ export default function Savings({ data, onAdd, onUpdate, onDelete }: SavingsProp
       )}
 
       {/* Add Goal Modal */}
-      {showModal && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-gray-900 rounded-t-2xl sm:rounded-2xl border border-gray-800 shadow-2xl max-h-[90vh] overflow-y-auto">
-            {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-800">
-              <h2 className="text-white font-semibold text-lg">{t('savings.newGoal')}</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('savings.newGoal')}</DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleAddGoal} className="space-y-4">
+            {/* Goal Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="goal-name">{t('savings.goalName')}</Label>
+              <Input
+                id="goal-name"
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleFormChange}
+                placeholder="e.g. Emergency Fund"
+                required
+              />
             </div>
 
-            {/* Modal form */}
-            <form onSubmit={handleAddGoal} className="px-6 py-5 space-y-4">
-              {/* Goal Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                  {t('savings.goalName')}
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Emergency Fund"
-                  required
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-primary-500 transition-colors"
-                />
-              </div>
-
-              {/* Target Amount + Currency */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                    {t('savings.targetAmount')}
-                  </label>
-                  <input
-                    type="number"
-                    name="targetAmount"
-                    value={form.targetAmount}
-                    onChange={handleFormChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    required
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-primary-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                    {t('form.currency')}
-                  </label>
-                  <select
-                    name="currency"
-                    value={form.currency}
-                    onChange={handleFormChange}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-primary-500 transition-colors"
-                  >
-                    <option value="USD">USD</option>
-                    <option value="PLN">PLN</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Current Amount */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                  {t('savings.currentAmount')} <span className="text-gray-500">({t('common.optional')})</span>
-                </label>
-                <input
+            {/* Target Amount + Currency */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="goal-targetAmount">{t('savings.targetAmount')}</Label>
+                <Input
+                  id="goal-targetAmount"
                   type="number"
-                  name="currentAmount"
-                  value={form.currentAmount}
+                  name="targetAmount"
+                  value={form.targetAmount}
                   onChange={handleFormChange}
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-primary-500 transition-colors"
+                  required
                 />
               </div>
-
-              {/* Deadline */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                  {t('savings.deadline')} <span className="text-gray-500">({t('common.optional')})</span>
-                </label>
-                <input
-                  type="date"
-                  name="deadline"
-                  value={form.deadline}
-                  onChange={handleFormChange}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-primary-500 transition-colors [color-scheme:dark]"
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-lg text-sm font-medium transition-colors"
+              <div className="space-y-1.5">
+                <Label>{t('form.currency')}</Label>
+                <Select
+                  value={form.currency}
+                  onValueChange={(v) => setForm(prev => ({ ...prev, currency: v as import('../types').Currency }))}
                 >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2.5 bg-primary-600 hover:bg-primary-500 text-white rounded-lg text-sm font-medium transition-colors"
-                >
-                  {t('savings.saveGoal')}
-                </button>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="PLN">PLN</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+
+            {/* Current Amount */}
+            <div className="space-y-1.5">
+              <Label htmlFor="goal-currentAmount">
+                {t('savings.currentAmount')} <span className="text-gray-500">({t('common.optional')})</span>
+              </Label>
+              <Input
+                id="goal-currentAmount"
+                type="number"
+                name="currentAmount"
+                value={form.currentAmount}
+                onChange={handleFormChange}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+              />
+            </div>
+
+            {/* Deadline */}
+            <div className="space-y-1.5">
+              <Label htmlFor="goal-deadline">
+                {t('savings.deadline')} <span className="text-gray-500">({t('common.optional')})</span>
+              </Label>
+              <Input
+                id="goal-deadline"
+                type="date"
+                name="deadline"
+                value={form.deadline}
+                onChange={handleFormChange}
+                className="[color-scheme:dark]"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowModal(false)}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button type="submit">
+                {t('savings.saveGoal')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

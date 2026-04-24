@@ -278,6 +278,23 @@ export function deleteCategoryRule(data: AppData, keyword: string): AppData {
   return updated;
 }
 
+// Batch update historical rates (date → rates map)
+export function batchUpdateTransactionRates(
+  data: AppData,
+  dateRatesMap: Map<string, Record<string, number>>,
+): AppData {
+  const updated = {
+    ...data,
+    transactions: data.transactions.map((t) => {
+      if (t.exchangeRatesAtTime) return t; // already has rates
+      const rates = dateRatesMap.get(t.date);
+      return rates ? { ...t, exchangeRatesAtTime: rates } : t;
+    }),
+  };
+  saveData(updated);
+  return updated;
+}
+
 // Batch operations
 export function deleteTransactions(data: AppData, ids: Set<string>): AppData {
   const updated = { ...data, transactions: data.transactions.filter(t => !ids.has(t.id)) };

@@ -55,7 +55,8 @@ export interface Transaction {
   category: IncomeCategory | ExpenseCategory;
   description: string;
   date: string; // ISO date string YYYY-MM-DD
-  exchangeRateAtTime?: number; // USD→PLN rate when this transaction occurred
+  exchangeRateAtTime?: number; // USD→PLN rate when this transaction occurred (legacy scalar)
+  exchangeRatesAtTime?: Record<string, number>; // full USD-base rates on the transaction date
   source?: TransactionSource; // where this transaction came from
   counterparty?: string; // who received/sent the money
   notes?: string; // user notes

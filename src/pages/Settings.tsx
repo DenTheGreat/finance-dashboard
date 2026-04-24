@@ -5,6 +5,10 @@ import type { AppData, UserSettings, Transaction } from '../types';
 import { useI18n } from '../i18n';
 import type { Locale } from '../i18n';
 import BankImport from './BankImport';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 interface SettingsProps {
   data: AppData;
@@ -17,9 +21,6 @@ interface SettingsProps {
   onAddTransaction: (tx: Omit<Transaction, 'id'>) => void;
   onAddRule: (keyword: string, category: string) => void;
 }
-
-const inputClass =
-  'bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 w-full';
 
 export default function Settings({
   data,
@@ -193,29 +194,15 @@ export default function Settings({
           </label>
 
           {/* Auto/Manual toggle */}
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={autoRate}
-              onClick={() => setAutoRate(!autoRate)}
-              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors ${
-                autoRate ? 'bg-primary-600' : 'bg-gray-700'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${
-                  autoRate ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
+          <div className="flex items-center gap-3">
+            <Switch checked={autoRate} onCheckedChange={setAutoRate} />
             <span className="text-sm text-gray-300">
               {t('settings.autoFetchRate')} {autoRate && <span className="text-accent-400 text-xs ml-1">{t('settings.active')}</span>}
             </span>
-          </label>
+          </div>
 
           <div className="flex gap-2">
-            <input
+            <Input
               id="exchangeRate"
               type="number"
               min={0}
@@ -223,19 +210,19 @@ export default function Settings({
               value={exchangeRate}
               onChange={(e) => setExchangeRate(e.target.value)}
               placeholder="4.05"
-              className={inputClass}
               disabled={autoRate && !fetchingRate}
             />
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={handleRefreshRate}
               disabled={fetchingRate}
-              className="shrink-0 inline-flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-gray-100 text-sm font-medium px-2.5 sm:px-3 py-2 rounded-lg transition-colors min-h-[44px]"
+              className="shrink-0 gap-1.5 min-h-[44px]"
               title={t('settings.refresh')}
             >
               <RefreshCw className={`h-4 w-4 ${fetchingRate ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">{t('settings.refresh')}</span>
-            </button>
+            </Button>
           </div>
           {autoRate && (
             <p className="text-xs text-gray-500">
@@ -271,14 +258,14 @@ export default function Settings({
 
         {/* Monthly Budget */}
         <div className="space-y-2">
-          <label
+          <Label
             htmlFor="monthlyBudget"
             className="block text-sm font-medium text-gray-300"
           >
             {t('settings.monthlyBudget')}{' '}
             <span className="text-gray-500 font-normal">({t('common.optional')})</span>
-          </label>
-          <input
+          </Label>
+          <Input
             id="monthlyBudget"
             type="number"
             min={0}
@@ -286,18 +273,17 @@ export default function Settings({
             value={monthlyBudget}
             onChange={(e) => setMonthlyBudget(e.target.value)}
             placeholder="e.g. 3000"
-            className={inputClass}
           />
         </div>
 
         {/* Save */}
-        <button
+        <Button
           onClick={handleSaveSettings}
-          className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-medium px-5 py-2.5 rounded-lg transition-colors min-h-[44px]"
+          className="gap-2 min-h-[44px]"
         >
           <SettingsIcon className="h-4 w-4" />
           {t('settings.saveSettings')}
-        </button>
+        </Button>
       </section>
 
       {/* Bank Import */}
@@ -317,13 +303,14 @@ export default function Settings({
           <p className="text-sm text-gray-400">
             {t('settings.exportDescription')}
           </p>
-          <button
+          <Button
+            variant="outline"
             onClick={handleExport}
-            className="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-100 font-medium px-5 py-2.5 rounded-lg transition-colors"
+            className="gap-2"
           >
             <Download className="h-4 w-4" />
             {t('settings.exportData')}
-          </button>
+          </Button>
         </div>
 
         <hr className="border-gray-800" />
@@ -349,17 +336,18 @@ export default function Settings({
               className="hidden"
               id="importFileInput"
             />
-            <button
+            <Button
+              variant="outline"
               onClick={() => {
                 setImportError(null);
                 setImportSuccess(false);
                 fileInputRef.current?.click();
               }}
-              className="inline-flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-100 font-medium px-5 py-2.5 rounded-lg transition-colors"
+              className="gap-2"
             >
               <Upload className="h-4 w-4" />
               {t('settings.importFromFile')}
-            </button>
+            </Button>
           </div>
 
           {importError && (
@@ -382,7 +370,8 @@ export default function Settings({
                   {t('import.transactionsStored', { count: String(data.transactions.length), plural: data.transactions.length !== 1 ? 's' : '' })}
                 </p>
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    variant="outline"
                     onClick={() => {
                       const removed = onDeduplicate();
                       if (removed > 0) {
@@ -391,22 +380,23 @@ export default function Settings({
                         alert(t('import.noDuplicates'));
                       }
                     }}
-                    className="flex items-center gap-2 bg-yellow-900/40 hover:bg-yellow-900/60 text-yellow-400 hover:text-yellow-300 font-medium px-4 py-2 rounded-lg transition-colors text-sm border border-yellow-800"
+                    className="gap-2 bg-yellow-900/40 hover:bg-yellow-900/60 text-yellow-400 hover:text-yellow-300 border-yellow-800 text-sm"
                   >
                     <Filter className="h-4 w-4" />
                     {t('import.deduplicate')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="destructive"
                     onClick={() => {
                       if (window.confirm(t('import.clearConfirm', { count: String(data.transactions.length) }))) {
                         onClear();
                       }
                     }}
-                    className="flex items-center gap-2 bg-red-900/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 font-medium px-4 py-2 rounded-lg transition-colors text-sm border border-red-800"
+                    className="gap-2 text-sm"
                   >
                     <Trash2 className="h-4 w-4" />
                     {t('import.clearAll')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -423,13 +413,13 @@ export default function Settings({
         <p className="text-sm text-warning-400 font-medium">
           {t('settings.demoWarning')}
         </p>
-        <button
+        <Button
           onClick={onLoadSeed}
-          className="inline-flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-medium px-5 py-2.5 rounded-lg transition-colors"
+          className="gap-2"
         >
           <Database className="h-4 w-4" />
           {t('settings.loadDemoData')}
-        </button>
+        </Button>
       </section>
 
       {/* About */}

@@ -2,6 +2,37 @@ const API_URL = 'https://open.er-api.com/v6/latest/USD';
 const CACHE_KEY = 'finance-dashboard-live-rates';
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
+// Frankfurter is free, no API key, supports historical dates back to 1999
+const HISTORICAL_API = 'https://api.frankfurter.app';
+const HISTORICAL_CACHE_PREFIX = 'finance-dashboard-hist-';
+
+export async function fetchHistoricalRatesForDate(
+  date: string, // YYYY-MM-DD
+): Promise<Record<string, number> | null> {
+  const today = new Date().toISOString().slice(0, 10);
+  if (date >= today) return null; // future dates use current rates
+
+  const cacheKey = HISTORICAL_CACHE_PREFIX + date;
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) return JSON.parse(cached) as Record<string, number>;
+  } catch {}
+
+  try {
+    const res = await fetch(`${HISTORICAL_API}/${date}?from=USD`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const rates = data?.rates;
+    if (rates && typeof rates === 'object') {
+      localStorage.setItem(cacheKey, JSON.stringify(rates));
+      return rates as Record<string, number>;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 interface CachedRates {
   rates: Record<string, number>;
   timestamp: number;

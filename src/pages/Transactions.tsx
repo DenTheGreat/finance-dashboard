@@ -23,6 +23,24 @@ import {
 } from '../types';
 import { convertCurrency } from '../utils/currency';
 import { useI18n } from '../i18n';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // ---------------------------------------------------------------------------
 // Hooks
@@ -82,9 +100,6 @@ const EMPTY_FILTERS: ColFilters = {
   amountMin: '',
   amountMax: '',
 };
-
-const INPUT_CLASS =
-  'w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500';
 
 // Shared grid template for aligned columns:
 // checkbox(36px) | date(110px) | description(1fr) | category(140px) | amount(120px) | saldo(100px) | cur(50px) | type(80px) | del(36px)
@@ -382,13 +397,6 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
   function handleOpenForm() { resetForm(); setShowForm(true); }
   function handleCloseForm() { setShowForm(false); }
-
-  useEffect(() => {
-    if (!showForm) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowForm(false); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [showForm]);
 
   function handleFormTypeChange(type: 'income' | 'expense') {
     setFormType(type);
@@ -797,7 +805,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
         <div className="px-3 py-2 text-sm text-gray-200 truncate">
           {tx.description || <span className="text-gray-500 italic">{t('transactions.noDescription')}</span>}
         </div>
-        {/* Category -- inline dropdown */}
+        {/* Category -- inline dropdown (kept as native select for color coding) */}
         <div className="px-3 py-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <select
             value={tx.category}
@@ -843,8 +851,8 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
                     data.settings.exchangeRates,
                   ),
                   data.settings.primaryCurrency,
-                ).replace(/\s/g, '\u00A0')}`
-              : '\u00A0'}
+                ).replace(/\s/g, ' ')}`
+              : ' '}
           </div>
         </div>
         {/* Saldo */}
@@ -863,13 +871,15 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
         </div>
         {/* Delete */}
         <div className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => onDelete(tx.id)}
-            className="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-gray-700 transition-colors opacity-0 group-hover:opacity-100"
             aria-label={t('transactions.delete')}
+            className="h-7 w-7 text-gray-600 hover:text-red-400 hover:bg-gray-700 opacity-0 group-hover:opacity-100"
           >
             <Trash2 size={14} />
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -912,6 +922,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+          {/* Kept as native select for color coding */}
           <select
             value={tx.category}
             onChange={(e) => onUpdateCategory(tx.id, e.target.value)}
@@ -943,19 +954,19 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
       {/* Header */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-100">{t('transactions.title')}</h1>
-        <button
+        <Button
           onClick={handleOpenForm}
-          className="flex items-center gap-1.5 sm:gap-2 bg-primary-600 hover:bg-primary-700 text-white font-medium px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base min-h-[44px]"
+          className="flex items-center gap-1.5 sm:gap-2 min-h-[44px] text-sm sm:text-base"
         >
           <Plus size={16} />
           <span className="hidden xs:inline">{t('transactions.addTransaction')}</span>
           <span className="xs:hidden">{t('transactions.add')}</span>
-        </button>
+        </Button>
       </div>
 
       {/* Search bar */}
       <div className="relative mb-4">
-        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none z-10" />
         <input
           type="text"
           value={searchQuery}
@@ -975,7 +986,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        {/* Group by */}
+        {/* Group by — kept as native select */}
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-400 whitespace-nowrap">{t('transactions.groupBy')}</label>
           <select
@@ -991,24 +1002,28 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
         </div>
 
         {/* Export CSV */}
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={handleExportCsv}
           title={t('transactions.exportCsv')}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1.5 rounded-lg transition-colors"
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 bg-gray-800 hover:bg-gray-700 border-gray-700"
         >
           <Download size={13} />
           <span className="hidden sm:inline">{t('transactions.exportCsv')}</span>
-        </button>
+        </Button>
 
         {/* Clear all filters */}
         {hasAnyFilter && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={clearAllFilters}
-            className="flex items-center gap-1.5 text-xs text-primary-400 hover:text-primary-300 bg-primary-900/30 hover:bg-primary-900/50 border border-primary-800 px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-xs text-primary-400 hover:text-primary-300 bg-primary-900/30 hover:bg-primary-900/50 border-primary-800"
           >
             <X size={12} />
             {t('transactions.clearAllFilters')}
-          </button>
+          </Button>
         )}
 
         <div className="ml-auto text-xs text-gray-500">
@@ -1177,7 +1192,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
             {selected.size} {t('transactions.selected')}
           </span>
           <div className="h-4 w-px bg-gray-600" />
-          {/* Batch category */}
+          {/* Batch category — kept as native select */}
           <select
             value={bulkCategory}
             onChange={(e) => setBulkCategory(e.target.value)}
@@ -1188,47 +1203,57 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
               <option key={c} value={c}>{tc(c)}</option>
             ))}
           </select>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleBulkSetCategory}
             disabled={!bulkCategory}
-            className="text-sm font-medium text-primary-400 hover:text-primary-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="text-sm font-medium text-primary-400 hover:text-primary-300 disabled:opacity-40"
           >
             {t('transactions.apply')}
-          </button>
+          </Button>
           <div className="h-4 w-px bg-gray-600" />
           {/* Delete */}
           {confirmDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-red-400">{t('transactions.confirmDeleteItems', { count: String(selected.size) })}</span>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleBulkDelete}
-                className="text-sm font-medium text-red-400 hover:text-red-300 transition-colors"
+                className="text-sm font-medium text-red-400 hover:text-red-300"
               >
                 {t('transactions.yesDelete')}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setConfirmDelete(false)}
-                className="text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                className="text-sm text-gray-400 hover:text-gray-200"
               >
                 {t('transactions.cancel')}
-              </button>
+              </Button>
             </div>
           ) : (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleBulkDelete}
-              className="flex items-center gap-1.5 text-sm font-medium text-red-400 hover:text-red-300 transition-colors"
+              className="flex items-center gap-1.5 text-sm font-medium text-red-400 hover:text-red-300"
             >
               <Trash2 size={14} />
               {t('transactions.deleteSelected')}
-            </button>
+            </Button>
           )}
           {/* Dismiss */}
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => { setSelected(new Set()); setConfirmDelete(false); }}
-            className="ml-1 text-gray-500 hover:text-gray-300 transition-colors"
+            className="ml-1 h-7 w-7 text-gray-500 hover:text-gray-300"
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
       )}
 
@@ -1267,21 +1292,21 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500">{t('transactions.date')}</span>
-                    <input
+                    <Input
                       type="date"
                       value={editDate}
                       onChange={(e) => setEditDate(e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="bg-gray-800 border-gray-700 text-gray-100 w-auto px-2 py-0.5 h-auto text-sm focus-visible:ring-primary-500"
                     />
                   </div>
                   <div className="flex justify-between items-center text-sm gap-4">
                     <span className="text-gray-500 shrink-0">{t('transactions.description')}</span>
-                    <input
+                    <Input
                       type="text"
                       value={editDescription}
                       onChange={(e) => setEditDescription(e.target.value)}
                       placeholder={t('transactions.noDescription')}
-                      className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 text-right focus:outline-none focus:ring-1 focus:ring-primary-500 w-48"
+                      className="bg-gray-800 border-gray-700 text-gray-100 text-right w-48 h-auto px-2 py-0.5 text-sm focus-visible:ring-primary-500"
                     />
                   </div>
                   <div className="flex justify-between text-sm gap-4">
@@ -1300,38 +1325,42 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500">{t('transactions.amount')}</span>
-                    <input
+                    <Input
                       type="number"
                       min="0"
                       step="0.01"
                       value={editAmount}
                       onChange={(e) => setEditAmount(e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 font-semibold text-right w-28 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      className="bg-gray-800 border-gray-700 text-gray-100 font-semibold text-right w-28 h-auto px-2 py-0.5 text-sm focus-visible:ring-primary-500"
                     />
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500">{t('transactions.currency')}</span>
-                    <select
+                    <Select
                       value={editCurrency}
-                      onChange={(e) => setEditCurrency(e.target.value as import('../types').Currency)}
-                      className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                      onValueChange={(v) => setEditCurrency(v as import('../types').Currency)}
                     >
-                      <option value="USD">USD</option>
-                      <option value="PLN">PLN</option>
-                      <option value="UAH">UAH</option>
-                    </select>
+                      <SelectTrigger className="w-24 h-auto py-0.5 bg-gray-800 border-gray-700 text-gray-100 text-sm focus:ring-primary-500">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-800 border-gray-700 text-gray-100">
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="PLN">PLN</SelectItem>
+                        <SelectItem value="UAH">UAH</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   {editCurrency !== data.settings.primaryCurrency && (
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-500">{t('transactions.exchangeRate')}</span>
-                      <input
+                      <Input
                         type="number"
                         min="0"
                         step="0.01"
                         value={editExchangeRate}
                         onChange={(e) => setEditExchangeRate(e.target.value)}
                         placeholder={String(data.settings.exchangeRate)}
-                        className="bg-gray-800 border border-gray-700 rounded px-2 py-0.5 text-sm text-gray-100 text-right w-28 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                        className="bg-gray-800 border-gray-700 text-gray-100 text-right w-28 h-auto px-2 py-0.5 text-sm focus-visible:ring-primary-500"
                       />
                     </div>
                   )}
@@ -1358,6 +1387,7 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500">{t('transactions.category')}</span>
+                    {/* Kept as native select for color coding */}
                     <select
                       value={tx.category}
                       onChange={(e) => onUpdateCategory(tx.id, e.target.value)}
@@ -1387,12 +1417,12 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
                 {/* Notes */}
                 <div className="space-y-2">
-                  <label className="block text-sm text-gray-500">{t('transactions.notes')}</label>
-                  <textarea
+                  <Label className="text-sm text-gray-500">{t('transactions.notes')}</Label>
+                  <Textarea
                     value={notesInput}
                     onChange={(e) => setNotesInput(e.target.value)}
                     rows={3}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                    className="w-full bg-gray-800 border-gray-700 text-gray-100 text-sm focus-visible:ring-primary-500 resize-none"
                   />
                 </div>
 
@@ -1400,18 +1430,19 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
 
                 {/* Save / Cancel */}
                 <div className="flex gap-3">
-                  <button
+                  <Button
                     onClick={handleSaveChanges}
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                    className="flex-1 text-sm font-medium py-2"
                   >
                     {t('common.save')}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="outline"
                     onClick={closeDetail}
-                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 text-sm font-medium py-2 rounded-lg transition-colors"
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 border-gray-600 text-gray-200 text-sm font-medium py-2"
                   >
                     {t('transactions.cancel')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1419,125 +1450,128 @@ export default function Transactions({ data, onAdd, onDelete, onUpdateCategory, 
         );
       })()}
 
-      {/* Add Transaction Modal */}
-      {showForm && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-          onClick={(e) => { if (e.target === e.currentTarget) handleCloseForm(); }}
-        >
-          <div className="bg-gray-800 rounded-xl p-4 sm:p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-gray-100">{t('transactions.addTransaction')}</h2>
-              <button onClick={handleCloseForm} className="text-gray-400 hover:text-gray-100 transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-4">
-              {/* Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.type')}</label>
-                <div className="flex bg-gray-900 rounded-lg p-1 gap-1">
-                  {(['income', 'expense'] as const).map((tp) => (
-                    <button
-                      key={tp}
-                      onClick={() => handleFormTypeChange(tp)}
-                      className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                        formType === tp
-                          ? tp === 'income' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-                          : 'text-gray-400 hover:text-gray-100'
-                      }`}
-                    >
-                      {t(`form.${tp}`)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Amount + Currency */}
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.amount')}</label>
-                  <input
-                    type="number" min="0" step="0.01" placeholder="0.00"
-                    value={formAmount}
-                    onChange={(e) => setFormAmount(e.target.value)}
-                    className={INPUT_CLASS}
-                  />
-                </div>
-                <div className="w-28">
-                  <label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.currency')}</label>
-                  <select
-                    value={formCurrency}
-                    onChange={(e) => setFormCurrency(e.target.value as import('../types').Currency)}
-                    className={INPUT_CLASS}
+      {/* Add Transaction Modal — shadcn Dialog */}
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) handleCloseForm(); }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto bg-gray-800 border-gray-700 text-gray-100">
+          <DialogHeader>
+            <DialogTitle className="text-gray-100">{t('transactions.addTransaction')}</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            {/* Type */}
+            <div>
+              <Label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.type')}</Label>
+              <div className="flex bg-gray-900 rounded-lg p-1 gap-1">
+                {(['income', 'expense'] as const).map((tp) => (
+                  <button
+                    key={tp}
+                    onClick={() => handleFormTypeChange(tp)}
+                    className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                      formType === tp
+                        ? tp === 'income' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+                        : 'text-gray-400 hover:text-gray-100'
+                    }`}
                   >
-                    <option value="USD">USD</option>
-                    <option value="PLN">PLN</option>
-                    <option value="UAH">UAH</option>
-                  </select>
-                </div>
+                    {t(`form.${tp}`)}
+                  </button>
+                ))}
               </div>
-              {/* Exchange rate */}
-              {formCurrency === 'PLN' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.exchangeRate')}</label>
-                  <input
-                    type="number" min="0" step="0.01"
-                    value={formExchangeRate}
-                    onChange={(e) => setFormExchangeRate(e.target.value)}
-                    className={INPUT_CLASS}
-                  />
-                </div>
-              )}
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.category')}</label>
-                <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)} className={INPUT_CLASS}>
-                  {formCategories.map((c) => <option key={c} value={c}>{tc(c)}</option>)}
-                </select>
-              </div>
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.description')}</label>
-                <input
-                  type="text" placeholder={t('form.optionalDescription')}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className={INPUT_CLASS}
+            </div>
+            {/* Amount + Currency */}
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <Label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.amount')}</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formAmount}
+                  onChange={(e) => setFormAmount(e.target.value)}
+                  className="bg-gray-800 border-gray-700 text-gray-100 focus-visible:ring-primary-500"
                 />
               </div>
-              {/* Date */}
+              <div className="w-28">
+                <Label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.currency')}</Label>
+                <Select value={formCurrency} onValueChange={(v) => setFormCurrency(v as import('../types').Currency)}>
+                  <SelectTrigger className="w-full bg-gray-800 border-gray-700 text-gray-100 focus:ring-primary-500">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-700 text-gray-100">
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="PLN">PLN</SelectItem>
+                    <SelectItem value="UAH">UAH</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {/* Exchange rate */}
+            {formCurrency === 'PLN' && (
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.date')}</label>
-                <input
-                  type="date"
-                  value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  className={INPUT_CLASS}
+                <Label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.exchangeRate')}</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formExchangeRate}
+                  onChange={(e) => setFormExchangeRate(e.target.value)}
+                  className="bg-gray-800 border-gray-700 text-gray-100 focus-visible:ring-primary-500"
                 />
               </div>
-              {/* Buttons */}
-              <div className="flex gap-3 pt-1">
-                <button
-                  onClick={handleSave}
-                  disabled={!formAmount || parseFloat(formAmount) <= 0}
-                  className="flex-1 bg-primary-600 hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium py-2 rounded-lg transition-colors"
-                >
-                  {t('transactions.save')}
-                </button>
-                <button
-                  onClick={handleCloseForm}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 rounded-lg transition-colors"
-                >
-                  {t('transactions.cancel')}
-                </button>
-              </div>
+            )}
+            {/* Category */}
+            <div>
+              <Label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.category')}</Label>
+              <Select value={formCategory} onValueChange={(v) => setFormCategory(v)}>
+                <SelectTrigger className="w-full bg-gray-800 border-gray-700 text-gray-100 focus:ring-primary-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-700 text-gray-100">
+                  {formCategories.map((c) => (
+                    <SelectItem key={c} value={c}>{tc(c)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Description */}
+            <div>
+              <Label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.description')}</Label>
+              <Input
+                type="text"
+                placeholder={t('form.optionalDescription')}
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-gray-100 focus-visible:ring-primary-500"
+              />
+            </div>
+            {/* Date */}
+            <div>
+              <Label className="block text-sm font-medium text-gray-400 mb-1.5">{t('form.date')}</Label>
+              <Input
+                type="date"
+                value={formDate}
+                onChange={(e) => setFormDate(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-gray-100 focus-visible:ring-primary-500"
+              />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="flex gap-3 pt-1">
+            <Button
+              onClick={handleSave}
+              disabled={!formAmount || parseFloat(formAmount) <= 0}
+              className="flex-1"
+            >
+              {t('transactions.save')}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleCloseForm}
+              className="flex-1 bg-gray-700 hover:bg-gray-600 border-gray-600 text-gray-200"
+            >
+              {t('transactions.cancel')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

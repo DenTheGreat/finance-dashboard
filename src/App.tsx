@@ -36,8 +36,9 @@ import {
   importData,
   deleteTransactions,
   updateTransactionsCategory,
+  batchUpdateTransactionRates,
 } from './store';
-import { fetchAllRates } from './utils/exchangeRate';
+import { fetchAllRates, fetchHistoricalRatesForDate } from './utils/exchangeRate';
 import { generateSeedData } from './utils/seed';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -59,6 +60,36 @@ export default function App() {
       }
     });
   }, [autoExchangeRate]);
+
+  // Backfill historical exchange rates for past foreign-currency transactions
+  useEffect(() => {
+    const { primaryCurrency } = data.settings;
+    const today = new Date().toISOString().slice(0, 10);
+    const uniqueDates = [
+      ...new Set(
+        data.transactions
+          .filter((tx) => tx.currency !== primaryCurrency && !tx.exchangeRatesAtTime && tx.date < today)
+          .map((tx) => tx.date),
+      ),
+    ];
+    if (uniqueDates.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const dateRatesMap = new Map<string, Record<string, number>>();
+      for (const date of uniqueDates) {
+        if (cancelled) break;
+        const rates = await fetchHistoricalRatesForDate(date);
+        if (rates) dateRatesMap.set(date, rates);
+        await new Promise((r) => setTimeout(r, 80)); // polite pacing for free API
+      }
+      if (!cancelled && dateRatesMap.size > 0) {
+        setData((prev) => batchUpdateTransactionRates(prev, dateRatesMap));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [data.transactions, data.settings.primaryCurrency]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddTransaction = useCallback((tx: Omit<Transaction, 'id'>) => {
     setData((prev) => addTransaction(prev, tx));

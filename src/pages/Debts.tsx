@@ -1,7 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Trash2, X, CreditCard, DollarSign } from 'lucide-react';
 import type { AppData, Debt, Currency } from '../types';
 import { useI18n } from '../i18n';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/components/ui/select';
 
 interface DebtsProps {
   data: AppData;
@@ -62,7 +79,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
       : 0;
 
   function handleFormChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: React.ChangeEvent<HTMLInputElement>,
   ) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   }
@@ -86,13 +103,6 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
     setShowModal(false);
   }
 
-  useEffect(() => {
-    if (!showModal) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowModal(false); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [showModal]);
-
   function handleMakePayment(debt: Debt) {
     const amount = parseFloat(paymentInputs[debt.id] || '');
     if (isNaN(amount) || amount <= 0) return;
@@ -113,18 +123,18 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
             <span className="text-red-400 font-semibold">
               {debts.length > 0
                 ? formatCurrency(totalDebt, data.settings.primaryCurrency)
-                : '\u2014'}
+                : '—'}
             </span>
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0 min-h-[44px]"
+          className="flex items-center gap-2 shrink-0 min-h-[44px]"
         >
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">{t('debts.addDebt')}</span>
           <span className="sm:hidden">{t('common.add')}</span>
-        </button>
+        </Button>
       </div>
 
       {/* Summary cards */}
@@ -158,7 +168,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
           <div>
             <p className="text-gray-400 text-xs uppercase tracking-wide">{t('debts.avgInterestRate')}</p>
             <p className="text-white font-semibold text-lg mt-0.5">
-              {debts.length > 0 ? `${avgInterestRate.toFixed(2)}%` : '\u2014'}
+              {debts.length > 0 ? `${avgInterestRate.toFixed(2)}%` : '—'}
             </p>
           </div>
         </div>
@@ -207,13 +217,15 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                       )}
                     </p>
                   </div>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => onDelete(debt.id)}
-                    className="text-gray-600 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
+                    className="text-gray-600 hover:text-red-400 flex-shrink-0 mt-0.5"
                     aria-label={t('common.delete')}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Progress bar */}
@@ -257,7 +269,7 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                   <div>
                     {activePayment === debt.id ? (
                       <div className="flex items-center gap-2">
-                        <input
+                        <Input
                           type="number"
                           min="0"
                           step="0.01"
@@ -269,24 +281,26 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
                               [debt.id]: e.target.value,
                             }))
                           }
-                          className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 text-sm flex-1 min-w-0 focus:outline-none focus:border-primary-500"
+                          className="flex-1 min-w-0 min-h-[44px]"
                           autoFocus
                         />
-                        <button
+                        <Button
                           onClick={() => handleMakePayment(debt)}
-                          className="bg-primary-600 hover:bg-primary-500 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                          className="min-h-[44px]"
                         >
                           {t('common.apply')}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => {
                             setActivePayment(null);
                             setPaymentInputs(prev => ({ ...prev, [debt.id]: '' }));
                           }}
-                          className="text-gray-500 hover:text-gray-300 transition-colors"
+                          className="text-gray-500 hover:text-gray-300 min-h-[44px]"
                         >
                           <X className="h-4 w-4" />
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <button
@@ -320,146 +334,142 @@ export default function Debts({ data, onAdd, onUpdate, onDelete }: DebtsProps) {
       )}
 
       {/* Add Debt Modal */}
-      {showModal && (
-        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-t-2xl sm:rounded-xl p-4 sm:p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-white">{t('debts.addDebt')}</h2>
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setForm(defaultForm);
-                }}
-                className="text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+      <Dialog
+        open={showModal}
+        onOpenChange={(open) => {
+          setShowModal(open);
+          if (!open) setForm(defaultForm);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('debts.addDebt')}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="debt-name">{t('debts.name')}</Label>
+              <Input
+                id="debt-name"
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleFormChange}
+                placeholder="e.g. Car Loan"
+              />
             </div>
 
-            <div className="space-y-4">
-              {/* Name */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">{t('debts.name')}</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={form.name}
-                  onChange={handleFormChange}
-                  placeholder="e.g. Car Loan"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-primary-500"
-                />
-              </div>
-
-              {/* Total Amount + Currency row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">{t('debts.totalAmount')}</label>
-                  <input
-                    type="number"
-                    name="totalAmount"
-                    value={form.totalAmount}
-                    onChange={handleFormChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">{t('form.currency')}</label>
-                  <select
-                    name="currency"
-                    value={form.currency}
-                    onChange={handleFormChange}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-primary-500"
-                  >
-                    <option value="USD">USD</option>
-                    <option value="PLN">PLN</option>
-                    <option value="UAH">UAH</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Already Paid */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">{t('debts.alreadyPaid')}</label>
-                <input
+            {/* Total Amount + Currency row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="debt-totalAmount">{t('debts.totalAmount')}</Label>
+                <Input
+                  id="debt-totalAmount"
                   type="number"
-                  name="paidAmount"
-                  value={form.paidAmount}
+                  name="totalAmount"
+                  value={form.totalAmount}
                   onChange={handleFormChange}
                   placeholder="0.00"
                   min="0"
                   step="0.01"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-primary-500"
                 />
               </div>
-
-              {/* Interest Rate + Minimum Payment row */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">{t('debts.interestRate')}</label>
-                  <input
-                    type="number"
-                    name="interestRate"
-                    value={form.interestRate}
-                    onChange={handleFormChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">{t('debts.minimumPayment')}</label>
-                  <input
-                    type="number"
-                    name="minimumPayment"
-                    value={form.minimumPayment}
-                    onChange={handleFormChange}
-                    placeholder="0.00"
-                    min="0"
-                    step="0.01"
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 placeholder-gray-600 focus:outline-none focus:border-primary-500"
-                  />
-                </div>
+              <div className="space-y-1.5">
+                <Label>{t('form.currency')}</Label>
+                <Select
+                  value={form.currency}
+                  onValueChange={(v) => setForm(prev => ({ ...prev, currency: v as Currency }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="PLN">PLN</SelectItem>
+                    <SelectItem value="UAH">UAH</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
 
-              {/* Due Date */}
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">{t('debts.dueDate')}</label>
-                <input
-                  type="date"
-                  name="dueDate"
-                  value={form.dueDate}
+            {/* Already Paid */}
+            <div className="space-y-1.5">
+              <Label htmlFor="debt-paidAmount">{t('debts.alreadyPaid')}</Label>
+              <Input
+                id="debt-paidAmount"
+                type="number"
+                name="paidAmount"
+                value={form.paidAmount}
+                onChange={handleFormChange}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+              />
+            </div>
+
+            {/* Interest Rate + Minimum Payment row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="debt-interestRate">{t('debts.interestRate')}</Label>
+                <Input
+                  id="debt-interestRate"
+                  type="number"
+                  name="interestRate"
+                  value={form.interestRate}
                   onChange={handleFormChange}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:border-primary-500"
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="debt-minimumPayment">{t('debts.minimumPayment')}</Label>
+                <Input
+                  id="debt-minimumPayment"
+                  type="number"
+                  name="minimumPayment"
+                  value={form.minimumPayment}
+                  onChange={handleFormChange}
+                  placeholder="0.00"
+                  min="0"
+                  step="0.01"
                 />
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowModal(false);
-                  setForm(defaultForm);
-                }}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!form.name.trim() || !form.totalAmount}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-primary-600 hover:bg-primary-500 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {t('debts.save')}
-              </button>
+            {/* Due Date */}
+            <div className="space-y-1.5">
+              <Label htmlFor="debt-dueDate">{t('debts.dueDate')}</Label>
+              <Input
+                id="debt-dueDate"
+                type="date"
+                name="dueDate"
+                value={form.dueDate}
+                onChange={handleFormChange}
+              />
             </div>
           </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowModal(false);
+                setForm(defaultForm);
+              }}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!form.name.trim() || !form.totalAmount}
+            >
+              {t('debts.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
