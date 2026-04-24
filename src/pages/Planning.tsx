@@ -88,16 +88,6 @@ function formatNextDueDate(date: Date | null, formatDate: (iso: string) => strin
   return formatDate(format(date, 'yyyy-MM-dd'));
 }
 
-function monthlyEstimate(items: PlannedItem[]): number {
-  return items
-    .filter((i) => i.isActive)
-    .reduce((sum, i) => {
-      if (i.recurrence === 'monthly') return sum + i.amount;
-      if (i.recurrence === 'yearly') return sum + i.amount / 12;
-      return sum + i.amount;
-    }, 0);
-}
-
 function isApplicableToMonth(item: PlannedItem, monthStr: string): boolean {
   const [year, month] = monthStr.split('-').map(Number);
   const monthStart = new Date(year, month - 1, 1);
