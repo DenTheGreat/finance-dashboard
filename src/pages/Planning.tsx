@@ -99,8 +99,7 @@ function MonthSelector({ value, onChange }: { value: string; onChange: (v: strin
       </span>
       <button
         onClick={() => shift(1)}
-        disabled={value >= today}
-        className="px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        className="px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
         aria-label="Next month"
       >
         ›
