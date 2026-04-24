@@ -243,6 +243,7 @@ export default function App() {
               <Planning
                 plannedExpenses={data.plannedExpenses}
                 plannedIncomes={data.plannedIncomes || []}
+                transactions={data.transactions}
                 primaryCurrency={data.settings.primaryCurrency}
                 onAddPlannedExpense={handleAddPlannedExpense}
                 onUpdatePlannedExpense={handleUpdatePlannedExpense}

@@ -15,6 +15,7 @@ import { useI18n } from '../i18n';
 interface PlanningProps {
   plannedExpenses: PlannedExpense[];
   plannedIncomes: PlannedIncome[];
+  transactions: { id: string; amount: number; date: string; description: string; category: string; type: 'income' | 'expense' }[];
   primaryCurrency: Currency;
   onAddPlannedExpense: (expense: Omit<PlannedExpense, 'id'>) => void;
   onUpdatePlannedExpense: (id: string, updates: Partial<PlannedExpense>) => void;
@@ -115,9 +116,30 @@ function monthlyEstimateForMonth(items: PlannedItem[], monthStr: string): number
     }, 0);
 }
 
+function isPaidInMonth(
+  item: PlannedItem,
+  monthStr: string,
+  transactions: PlanningProps['transactions']
+): boolean {
+  if (!isApplicableToMonth(item, monthStr)) return false;
+
+  const [year, month] = monthStr.split('-').map(Number);
+  const monthStart = format(new Date(year, month - 1, 1), 'yyyy-MM-dd');
+  const monthEnd = format(new Date(year, month, 0), 'yyyy-MM-dd');
+
+  return transactions.some((tx) => {
+    if (tx.date < monthStart || tx.date > monthEnd) return false;
+    const amountMatch = Math.abs(tx.amount - item.amount) < 0.01;
+    const descriptionMatch = tx.description.toLowerCase().includes(item.name.toLowerCase()) ||
+      item.name.toLowerCase().includes(tx.description.toLowerCase());
+    return amountMatch || descriptionMatch;
+  });
+}
+
 export default function Planning({
   plannedExpenses,
   plannedIncomes,
+  transactions,
   primaryCurrency,
   onAddPlannedExpense,
   onUpdatePlannedExpense,
@@ -133,6 +155,7 @@ export default function Planning({
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; kind: Kind } | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm(primaryCurrency, 'expense'));
   const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+  const [monthInput, setMonthInput] = useState<string>(format(new Date(), 'yyyy-MM'));
 
   const monthlyExpenseEstimate = useMemo(
     () => monthlyEstimateForMonth(plannedExpenses, selectedMonth),
@@ -143,6 +166,16 @@ export default function Planning({
     [plannedIncomes, selectedMonth]
   );
   const monthlyNet = monthlyIncomeEstimate - monthlyExpenseEstimate;
+
+  const handleMonthChange = (value: string) => {
+    const normalized = value.slice(0, 7);
+    if (/^\d{4}-\d{2}$/.test(normalized)) {
+      setSelectedMonth(normalized);
+      setMonthInput(normalized);
+    } else {
+      setMonthInput(value);
+    }
+  };
 
   useEffect(() => {
     if (!showModal) return;
@@ -246,6 +279,7 @@ export default function Planning({
     const nextDueStr = formatNextDueDate(nextDue, formatDate);
     const isOverdue = nextDue && isBefore(nextDue, startOfDay(new Date()));
     const appliesToMonth = isApplicableToMonth(item, selectedMonth);
+    const isPaid = appliesToMonth && isPaidInMonth(item, selectedMonth, transactions);
     const accent = kind === 'income' ? 'text-emerald-400' : 'text-white';
     const dotColor = item.isActive
       ? kind === 'income'
@@ -271,6 +305,11 @@ export default function Planning({
             {appliesToMonth && (
               <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-primary-500/20 text-primary-400">
                 Active
+              </span>
+            )}
+            {appliesToMonth && (
+              <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded-full ${isPaid ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                {isPaid ? 'Paid' : 'Pending'}
               </span>
             )}
           </div>
@@ -377,8 +416,15 @@ export default function Planning({
           <input
             type="month"
             value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+            onChange={(e) => handleMonthChange(e.target.value)}
             className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
+          <input
+            type="text"
+            value={monthInput}
+            onChange={(e) => handleMonthChange(e.target.value)}
+            placeholder="YYYY-MM"
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-28"
           />
         </div>
       </div>
