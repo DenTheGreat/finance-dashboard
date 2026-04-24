@@ -10,6 +10,7 @@ import type {
   Recurrence,
 } from '../types';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../types';
+import { convertCurrency, getCurrencySymbol } from '../utils/currency';
 import { useI18n } from '../i18n';
 
 interface PlanningProps {
@@ -17,6 +18,8 @@ interface PlanningProps {
   plannedIncomes: PlannedIncome[];
   transactions: { id: string; amount: number; date: string; description: string; category: string; type: 'income' | 'expense' }[];
   primaryCurrency: Currency;
+  exchangeRate: number;
+  exchangeRates?: Record<string, number>;
   onAddPlannedExpense: (expense: Omit<PlannedExpense, 'id'>) => void;
   onUpdatePlannedExpense: (id: string, updates: Partial<PlannedExpense>) => void;
   onDeletePlannedExpense: (id: string) => void;
@@ -106,13 +109,26 @@ function isApplicableToMonth(item: PlannedItem, monthStr: string): boolean {
   return true;
 }
 
-function monthlyEstimateForMonth(items: PlannedItem[], monthStr: string): number {
+const RECURRENCE_LABELS: Record<Recurrence, string> = {
+  once: 'Once',
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+};
+
+function monthlyEstimateForMonth(
+  items: PlannedItem[],
+  monthStr: string,
+  primaryCurrency: Currency,
+  exchangeRate: number,
+  exchangeRates?: Record<string, number>,
+): number {
   return items
     .filter((i) => isApplicableToMonth(i, monthStr))
     .reduce((sum, i) => {
-      if (i.recurrence === 'monthly') return sum + i.amount;
-      if (i.recurrence === 'yearly') return sum + i.amount / 12;
-      return sum + i.amount;
+      const converted = convertCurrency(i.amount, i.currency, primaryCurrency, exchangeRate, exchangeRates);
+      if (i.recurrence === 'monthly') return sum + converted;
+      if (i.recurrence === 'yearly') return sum + converted / 12;
+      return sum + converted;
     }, 0);
 }
 
@@ -132,7 +148,7 @@ function isPaidInMonth(
     const amountMatch = Math.abs(tx.amount - item.amount) < 0.01;
     const descriptionMatch = tx.description.toLowerCase().includes(item.name.toLowerCase()) ||
       item.name.toLowerCase().includes(tx.description.toLowerCase());
-    return amountMatch || descriptionMatch;
+    return amountMatch && descriptionMatch;
   });
 }
 
@@ -141,6 +157,8 @@ export default function Planning({
   plannedIncomes,
   transactions,
   primaryCurrency,
+  exchangeRate,
+  exchangeRates,
   onAddPlannedExpense,
   onUpdatePlannedExpense,
   onDeletePlannedExpense,
@@ -155,26 +173,19 @@ export default function Planning({
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; kind: Kind } | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm(primaryCurrency, 'expense'));
   const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
-  const [monthInput, setMonthInput] = useState<string>(format(new Date(), 'yyyy-MM'));
 
   const monthlyExpenseEstimate = useMemo(
-    () => monthlyEstimateForMonth(plannedExpenses, selectedMonth),
-    [plannedExpenses, selectedMonth]
+    () => monthlyEstimateForMonth(plannedExpenses, selectedMonth, primaryCurrency, exchangeRate, exchangeRates),
+    [plannedExpenses, selectedMonth, primaryCurrency, exchangeRate, exchangeRates]
   );
   const monthlyIncomeEstimate = useMemo(
-    () => monthlyEstimateForMonth(plannedIncomes, selectedMonth),
-    [plannedIncomes, selectedMonth]
+    () => monthlyEstimateForMonth(plannedIncomes, selectedMonth, primaryCurrency, exchangeRate, exchangeRates),
+    [plannedIncomes, selectedMonth, primaryCurrency, exchangeRate, exchangeRates]
   );
   const monthlyNet = monthlyIncomeEstimate - monthlyExpenseEstimate;
 
   const handleMonthChange = (value: string) => {
-    const normalized = value.slice(0, 7);
-    if (/^\d{4}-\d{2}$/.test(normalized)) {
-      setSelectedMonth(normalized);
-      setMonthInput(normalized);
-    } else {
-      setMonthInput(value);
-    }
+    if (value) setSelectedMonth(value);
   };
 
   useEffect(() => {
@@ -265,14 +276,8 @@ export default function Planning({
     setDeleteConfirm(null);
   }
 
-  const RECURRENCE_LABELS: Record<Recurrence, string> = {
-    once: 'Once',
-    monthly: 'Monthly',
-    yearly: 'Yearly',
-  };
-
   const categoryOptions = modalKind === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-  const currencySymbol = primaryCurrency === 'USD' ? '$' : primaryCurrency === 'PLN' ? 'zł' : '₴';
+  const currencySymbol = getCurrencySymbol(primaryCurrency);
 
   function renderCard(item: PlannedItem, kind: Kind) {
     const nextDue = getNextDueDate(item);
@@ -417,14 +422,7 @@ export default function Planning({
             type="month"
             value={selectedMonth}
             onChange={(e) => handleMonthChange(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-          <input
-            type="text"
-            value={monthInput}
-            onChange={(e) => handleMonthChange(e.target.value)}
-            placeholder="YYYY-MM"
-            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-28"
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 [color-scheme:dark]"
           />
         </div>
       </div>

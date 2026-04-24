@@ -61,27 +61,16 @@ export default function Dashboard({ data }: DashboardProps) {
   const { transactions, settings } = data;
   const { primaryCurrency, exchangeRate } = settings;
 
-  // Monthly breakdown
-  const breakdown = getMonthlyBreakdown(
-    transactions,
-    month,
-    year,
-    primaryCurrency,
-    exchangeRate,
-    settings.exchangeRates,
+  const breakdown = useMemo(
+    () => getMonthlyBreakdown(transactions, month, year, primaryCurrency, exchangeRate, settings.exchangeRates),
+    [transactions, month, year, primaryCurrency, exchangeRate, settings.exchangeRates],
   );
 
-  // Savings advice
-  const advice = getSavingsAdvice(breakdown);
+  const advice = useMemo(() => getSavingsAdvice(breakdown), [breakdown]);
 
-  // Expenses by category for pie chart
-  const expensesByCategory = getExpensesByCategory(
-    transactions,
-    month,
-    year,
-    primaryCurrency,
-    exchangeRate,
-    settings.exchangeRates,
+  const expensesByCategory = useMemo(
+    () => getExpensesByCategory(transactions, month, year, primaryCurrency, exchangeRate, settings.exchangeRates),
+    [transactions, month, year, primaryCurrency, exchangeRate, settings.exchangeRates],
   );
 
   const pieData = expensesByCategory.map(({ category, amount, color }) => ({
@@ -131,8 +120,10 @@ export default function Dashboard({ data }: DashboardProps) {
       .slice(0, selectedCategory || dashSearch ? 50 : 5);
   }, [transactions, selectedCategory, dashSearch]);
 
-  // Per-currency totals + converted totals in primary currency
-  const currencyTotals = getCurrencyTotals(transactions, month, year);
+  const currencyTotals = useMemo(
+    () => getCurrencyTotals(transactions, month, year),
+    [transactions, month, year],
+  );
   const totalIncomePrimary = breakdown.totalIncome;
   const totalExpensesPrimary = breakdown.totalExpenses;
   const totalBalancePrimary = breakdown.netBalance;

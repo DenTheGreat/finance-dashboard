@@ -15,7 +15,7 @@ const en: Record<string, string> = {
 
   // Dashboard
   'dashboard.title': 'Dashboard',
-  'dashboard.totalBalance': 'Total Balance',
+  'dashboard.totalBalance': 'Monthly Net',
   'dashboard.monthlyIncome': 'Monthly Income',
   'dashboard.monthlyExpenses': 'Monthly Expenses',
   'dashboard.savingsRate': 'Savings Rate',

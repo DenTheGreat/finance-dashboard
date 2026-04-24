@@ -44,9 +44,10 @@ import ErrorBoundary from './components/ErrorBoundary';
 export default function App() {
   const [data, setData] = useState(loadData);
 
-  // Fetch live exchange rates on mount if auto mode is enabled
+  // Fetch live exchange rates when auto mode is enabled
+  const autoExchangeRate = data.settings.autoExchangeRate;
   useEffect(() => {
-    if (!data.settings.autoExchangeRate) return;
+    if (!autoExchangeRate) return;
     fetchAllRates().then((rates) => {
       if (rates) {
         const plnRate = rates['PLN'];
@@ -57,7 +58,7 @@ export default function App() {
         setData((prev) => updateSettings(prev, updates));
       }
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoExchangeRate]);
 
   const handleAddTransaction = useCallback((tx: Omit<Transaction, 'id'>) => {
     setData((prev) => addTransaction(prev, tx));
@@ -245,6 +246,8 @@ export default function App() {
                 plannedIncomes={data.plannedIncomes || []}
                 transactions={data.transactions}
                 primaryCurrency={data.settings.primaryCurrency}
+                exchangeRate={data.settings.exchangeRate}
+                exchangeRates={data.settings.exchangeRates}
                 onAddPlannedExpense={handleAddPlannedExpense}
                 onUpdatePlannedExpense={handleUpdatePlannedExpense}
                 onDeletePlannedExpense={handleDeletePlannedExpense}

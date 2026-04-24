@@ -15,7 +15,7 @@ const ru: Record<string, string> = {
 
   // Dashboard
   'dashboard.title': 'Панель',
-  'dashboard.totalBalance': 'Общий баланс',
+  'dashboard.totalBalance': 'Итог месяца',
   'dashboard.monthlyIncome': 'Месячный доход',
   'dashboard.monthlyExpenses': 'Месячные расходы',
   'dashboard.savingsRate': 'Уровень сбережений',

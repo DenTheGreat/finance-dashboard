@@ -286,10 +286,13 @@ export function deleteTransactions(data: AppData, ids: Set<string>): AppData {
 }
 
 export function updateTransactionsCategory(data: AppData, ids: Set<string>, category: string): AppData {
+  const isIncome = INCOME_CATEGORIES.includes(category as typeof INCOME_CATEGORIES[number]);
   const updated = {
     ...data,
     transactions: data.transactions.map(t =>
-      ids.has(t.id) ? { ...t, category: category as Transaction['category'] } : t
+      ids.has(t.id)
+        ? { ...t, category: category as Transaction['category'], type: isIncome ? 'income' as const : 'expense' as const }
+        : t
     ),
   };
   saveData(updated);
@@ -304,11 +307,25 @@ export function exportData(data: AppData): string {
 export function importData(json: string): AppData | null {
   try {
     const parsed = JSON.parse(json);
-    if (parsed.transactions && parsed.settings) {
-      saveData(parsed);
-      return parsed as AppData;
-    }
-    return null;
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      !Array.isArray(parsed.transactions) ||
+      !parsed.settings ||
+      typeof parsed.settings !== 'object'
+    ) return null;
+    const result: AppData = {
+      transactions: parsed.transactions,
+      debts: Array.isArray(parsed.debts) ? parsed.debts : [],
+      savingsGoals: Array.isArray(parsed.savingsGoals) ? parsed.savingsGoals : [],
+      plannedExpenses: Array.isArray(parsed.plannedExpenses) ? parsed.plannedExpenses : [],
+      plannedIncomes: Array.isArray(parsed.plannedIncomes) ? parsed.plannedIncomes : [],
+      monthlyBudgets: Array.isArray(parsed.monthlyBudgets) ? parsed.monthlyBudgets : [],
+      settings: { ...DEFAULT_DATA.settings, ...parsed.settings },
+      categoryRules: Array.isArray(parsed.categoryRules) ? parsed.categoryRules : [],
+    };
+    saveData(result);
+    return result;
   } catch {
     return null;
   }
