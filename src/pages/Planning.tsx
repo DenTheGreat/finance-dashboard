@@ -104,15 +104,13 @@ function MonthSelector({ value, onChange }: { value: string; onChange: (v: strin
       >
         ›
       </button>
-      {value !== today && (
-        <button
-          onClick={() => onChange(today)}
-          className="px-2 py-1 mr-1 text-xs text-primary-400 hover:text-primary-300 border border-primary-500/30 rounded transition-colors"
-          aria-label="Go to current month"
-        >
-          Today
-        </button>
-      )}
+      <button
+        onClick={() => onChange(today)}
+        className={`px-2 py-1 mr-1 text-xs text-primary-400 hover:text-primary-300 border border-primary-500/30 rounded transition-colors ${value === today ? 'invisible' : ''}`}
+        aria-label="Go to current month"
+      >
+        Today
+      </button>
     </div>
   );
 }
