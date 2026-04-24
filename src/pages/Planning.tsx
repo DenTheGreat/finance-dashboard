@@ -98,6 +98,33 @@ function monthlyEstimate(items: PlannedItem[]): number {
     }, 0);
 }
 
+function isApplicableToMonth(item: PlannedItem, monthStr: string): boolean {
+  const [year, month] = monthStr.split('-').map(Number);
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0);
+  const itemStart = new Date(item.startDate);
+  const itemEnd = item.endDate ? new Date(item.endDate) : null;
+
+  if (!item.isActive) return false;
+  if (itemEnd && itemEnd < monthStart) return false;
+  if (itemStart > monthEnd) return false;
+  if (item.recurrence === 'once') {
+    return itemStart >= monthStart && itemStart <= monthEnd;
+  }
+
+  return true;
+}
+
+function monthlyEstimateForMonth(items: PlannedItem[], monthStr: string): number {
+  return items
+    .filter((i) => isApplicableToMonth(i, monthStr))
+    .reduce((sum, i) => {
+      if (i.recurrence === 'monthly') return sum + i.amount;
+      if (i.recurrence === 'yearly') return sum + i.amount / 12;
+      return sum + i.amount;
+    }, 0);
+}
+
 export default function Planning({
   plannedExpenses,
   plannedIncomes,
@@ -115,9 +142,16 @@ export default function Planning({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; kind: Kind } | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm(primaryCurrency, 'expense'));
+  const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
 
-  const monthlyExpenseEstimate = useMemo(() => monthlyEstimate(plannedExpenses), [plannedExpenses]);
-  const monthlyIncomeEstimate = useMemo(() => monthlyEstimate(plannedIncomes), [plannedIncomes]);
+  const monthlyExpenseEstimate = useMemo(
+    () => monthlyEstimateForMonth(plannedExpenses, selectedMonth),
+    [plannedExpenses, selectedMonth]
+  );
+  const monthlyIncomeEstimate = useMemo(
+    () => monthlyEstimateForMonth(plannedIncomes, selectedMonth),
+    [plannedIncomes, selectedMonth]
+  );
   const monthlyNet = monthlyIncomeEstimate - monthlyExpenseEstimate;
 
   useEffect(() => {
@@ -221,6 +255,7 @@ export default function Planning({
     const nextDue = getNextDueDate(item);
     const nextDueStr = formatNextDueDate(nextDue, formatDate);
     const isOverdue = nextDue && isBefore(nextDue, startOfDay(new Date()));
+    const appliesToMonth = isApplicableToMonth(item, selectedMonth);
     const accent = kind === 'income' ? 'text-emerald-400' : 'text-white';
     const dotColor = item.isActive
       ? kind === 'income'
@@ -234,7 +269,7 @@ export default function Planning({
         key={item.id}
         className={`bg-gray-900 rounded-xl p-5 border flex flex-col gap-3 ${
           item.isActive ? 'border-gray-800' : 'border-gray-800/50 opacity-60'
-        }`}
+        } ${appliesToMonth ? 'ring-1 ring-primary-500/30' : ''}`}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -243,6 +278,11 @@ export default function Planning({
               style={{ backgroundColor: dotColor }}
             />
             <h3 className="text-white font-semibold truncate">{item.name}</h3>
+            {appliesToMonth && (
+              <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-primary-500/20 text-primary-400">
+                Active
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button
@@ -335,12 +375,21 @@ export default function Planning({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-white">Planning</h1>
           <p className="text-gray-400 text-sm mt-1">
             Track expected income and recurring expenses
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-gray-400 text-sm">Month:</label>
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          />
         </div>
       </div>
 
