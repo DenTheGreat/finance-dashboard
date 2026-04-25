@@ -8,7 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Wallet, TrendingUp, TrendingDown, Target, X, Search, Calendar, ArrowRight } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, Target, X, Search, Calendar, ArrowRight, Landmark } from 'lucide-react';
 import type { AppData, Transaction } from '../types';
 import { CATEGORY_COLORS } from '../types';
 import {
@@ -17,6 +17,7 @@ import {
   getExpensesByCategory,
 } from '../utils/advisor';
 import { calculatePlannedVsActual, getUpcomingPlannedExpenses } from '../utils/planning';
+import { convertCurrency } from '../utils/currency';
 import { useI18n } from '../i18n';
 
 interface DashboardProps {
@@ -151,6 +152,25 @@ export default function Dashboard({ data }: DashboardProps) {
     [data.plannedExpenses],
   );
 
+  // Net worth: savings - debt remaining (converted to primary currency)
+  const netWorth = useMemo(() => {
+    const savingsTotal = data.savingsGoals.reduce((sum, g) =>
+      sum + convertCurrency(g.currentAmount, g.currency, primaryCurrency, exchangeRate, settings.exchangeRates), 0);
+    const debtTotal = data.debts.reduce((sum, d) =>
+      sum + convertCurrency(Math.max(d.totalAmount - d.paidAmount, 0), d.currency, primaryCurrency, exchangeRate, settings.exchangeRates), 0);
+    return savingsTotal - debtTotal;
+  }, [data.savingsGoals, data.debts, primaryCurrency, exchangeRate, settings.exchangeRates]);
+
+  // Budget overview for current month
+  const budgetOverview = useMemo(() => {
+    const monthBudgets = data.monthlyBudgets.filter(b => b.month === currentMonth);
+    const totalBudgeted = monthBudgets.reduce((s, b) => s + b.amount, 0);
+    const totalSpent = data.transactions
+      .filter(tx => tx.type === 'expense' && tx.date.startsWith(currentMonth))
+      .reduce((s, tx) => s + convertCurrency(tx.amount, tx.currency, primaryCurrency, exchangeRate, settings.exchangeRates), 0);
+    return { totalBudgeted, totalSpent, hasAny: monthBudgets.length > 0 };
+  }, [data.monthlyBudgets, data.transactions, currentMonth, primaryCurrency, exchangeRate, settings.exchangeRates]);
+
   const STATUS_BADGE: Record<
     'excellent' | 'good' | 'fair' | 'needs_attention',
     { labelKey: string; classes: string }
@@ -171,7 +191,7 @@ export default function Dashboard({ data }: DashboardProps) {
       {/* Page heading */}
       <h1 className="text-2xl font-bold text-white">{t('dashboard.title')}</h1>
 
-      {/* Top row - 4 stat cards */}
+      {/* Top row - stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Balance */}
         <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col gap-3">
@@ -241,6 +261,64 @@ export default function Dashboard({ data }: DashboardProps) {
             {savingsRate.toFixed(1)}%
           </p>
           <p className="text-xs text-gray-500">{t('dashboard.goal')}: {advice.optimalSavingsRate}%</p>
+        </div>
+      </div>
+
+      {/* Net Worth + Budget overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-400">Net Worth</span>
+            <Landmark className="h-5 w-5 text-gray-500" />
+          </div>
+          <p className={`text-2xl font-bold ${netWorth >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {formatCurrency(netWorth, primaryCurrency)}
+          </p>
+          <p className="text-xs text-gray-500">Savings minus remaining debt</p>
+        </div>
+
+        <div className="bg-gray-900 rounded-xl p-5 border border-gray-800 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-400">Budget This Month</span>
+            <Target className="h-5 w-5 text-gray-500" />
+          </div>
+          {budgetOverview.hasAny ? (
+            <>
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-xl font-bold text-white">
+                  {formatCurrency(budgetOverview.totalSpent, primaryCurrency)}
+                </p>
+                <p className="text-xs text-gray-500">
+                  of {formatCurrency(budgetOverview.totalBudgeted, primaryCurrency)} budgeted
+                </p>
+              </div>
+              <div className="h-2 w-full rounded-full bg-gray-800 overflow-hidden">
+                <div
+                  className={`h-full transition-all ${budgetOverview.totalSpent > budgetOverview.totalBudgeted ? 'bg-red-500' : 'bg-primary-500'}`}
+                  style={{
+                    width: `${budgetOverview.totalBudgeted > 0
+                      ? Math.min((budgetOverview.totalSpent / budgetOverview.totalBudgeted) * 100, 100)
+                      : 0}%`,
+                  }}
+                />
+              </div>
+              <Link
+                to="/budget"
+                className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1"
+              >
+                View budget
+                <ArrowRight size={12} />
+              </Link>
+            </>
+          ) : (
+            <Link
+              to="/budget"
+              className="text-sm text-primary-400 hover:text-primary-300 flex items-center gap-1"
+            >
+              Set monthly budgets
+              <ArrowRight size={14} />
+            </Link>
+          )}
         </div>
       </div>
 

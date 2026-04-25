@@ -316,6 +316,20 @@ export function updateTransactionsCategory(data: AppData, ids: Set<string>, cate
   return updated;
 }
 
+// Custom Categories
+export function addCustomCategory(data: AppData, kind: 'income' | 'expense', name: string): AppData {
+  const key = kind === 'income' ? 'customIncomeCategories' : 'customExpenseCategories';
+  const existing = data.settings[key] ?? [];
+  if (existing.includes(name)) return data;
+  return updateSettings(data, { [key]: [...existing, name] });
+}
+
+export function removeCustomCategory(data: AppData, kind: 'income' | 'expense', name: string): AppData {
+  const key = kind === 'income' ? 'customIncomeCategories' : 'customExpenseCategories';
+  const existing = data.settings[key] ?? [];
+  return updateSettings(data, { [key]: existing.filter((c: string) => c !== name) });
+}
+
 // Export / Import
 export function exportData(data: AppData): string {
   return JSON.stringify(data, null, 2);

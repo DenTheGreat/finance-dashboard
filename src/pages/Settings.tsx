@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
-import { Settings as SettingsIcon, Download, Upload, Info, RefreshCw, Database, Trash2, Filter } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Settings as SettingsIcon, Download, Upload, Info, RefreshCw, Database, Trash2, Filter, Tag, Bell, Plus, X } from 'lucide-react';
 import { fetchAllRates } from '../utils/exchangeRate';
 import type { AppData, UserSettings, Transaction } from '../types';
 import { useI18n } from '../i18n';
 import type { Locale } from '../i18n';
 import BankImport from './BankImport';
+import { requestNotificationPermission } from '../utils/reminders';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,6 +21,8 @@ interface SettingsProps {
   onDeduplicate: () => number;
   onAddTransaction: (tx: Omit<Transaction, 'id'>) => void;
   onAddRule: (keyword: string, category: string) => void;
+  onAddCustomCategory: (kind: 'income' | 'expense', name: string) => void;
+  onRemoveCustomCategory: (kind: 'income' | 'expense', name: string) => void;
 }
 
 export default function Settings({
@@ -32,6 +35,8 @@ export default function Settings({
   onDeduplicate,
   onAddTransaction,
   onAddRule,
+  onAddCustomCategory,
+  onRemoveCustomCategory,
 }: SettingsProps) {
   const { t, locale, setLocale } = useI18n();
   const { settings } = data;
@@ -53,6 +58,49 @@ export default function Settings({
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Custom categories
+  const [newExpenseCat, setNewExpenseCat] = useState('');
+  const [newIncomeCat, setNewIncomeCat] = useState('');
+
+  // Notifications
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported',
+  );
+  const [reminderDays, setReminderDays] = useState<string>(() =>
+    localStorage.getItem('reminders-days-ahead') ?? '3',
+  );
+
+  useEffect(() => {
+    localStorage.setItem('reminders-days-ahead', reminderDays);
+  }, [reminderDays]);
+
+  async function handleEnableReminders() {
+    const granted = await requestNotificationPermission();
+    if (typeof Notification !== 'undefined') {
+      setNotifPermission(Notification.permission);
+    }
+    if (!granted && typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+      setNotifPermission('denied');
+    }
+  }
+
+  function handleAddExpenseCat() {
+    const name = newExpenseCat.trim();
+    if (!name) return;
+    onAddCustomCategory('expense', name);
+    setNewExpenseCat('');
+  }
+
+  function handleAddIncomeCat() {
+    const name = newIncomeCat.trim();
+    if (!name) return;
+    onAddCustomCategory('income', name);
+    setNewIncomeCat('');
+  }
+
+  const customExpenseCategories = settings.customExpenseCategories ?? [];
+  const customIncomeCategories = settings.customIncomeCategories ?? [];
 
   async function handleRefreshRate() {
     setFetchingRate(true);
@@ -284,6 +332,135 @@ export default function Settings({
           <SettingsIcon className="h-4 w-4" />
           {t('settings.saveSettings')}
         </Button>
+      </section>
+
+      {/* Custom Categories */}
+      <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-5">
+        <div className="flex items-center gap-2">
+          <Tag className="h-5 w-5 text-primary-400" />
+          <h2 className="text-lg font-semibold text-white">Custom Categories</h2>
+        </div>
+        <p className="text-xs text-gray-500">Built-in categories cannot be removed.</p>
+
+        {/* Expense */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-gray-300">Expense Categories</h3>
+          {customExpenseCategories.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {customExpenseCategories.map((c) => (
+                <span
+                  key={c}
+                  className="inline-flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-full pl-3 pr-1.5 py-1 text-xs text-gray-200"
+                >
+                  {c}
+                  <button
+                    onClick={() => onRemoveCustomCategory('expense', c)}
+                    className="text-gray-500 hover:text-red-400 transition-colors p-0.5"
+                    aria-label={`Remove ${c}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500">No custom expense categories.</p>
+          )}
+          <div className="flex gap-2 pt-1">
+            <Input
+              value={newExpenseCat}
+              onChange={(e) => setNewExpenseCat(e.target.value)}
+              placeholder="New expense category"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddExpenseCat(); } }}
+            />
+            <Button onClick={handleAddExpenseCat} variant="outline" className="gap-1.5 shrink-0">
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+          </div>
+        </div>
+
+        {/* Income */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-gray-300">Income Categories</h3>
+          {customIncomeCategories.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {customIncomeCategories.map((c) => (
+                <span
+                  key={c}
+                  className="inline-flex items-center gap-1.5 bg-gray-800 border border-gray-700 rounded-full pl-3 pr-1.5 py-1 text-xs text-gray-200"
+                >
+                  {c}
+                  <button
+                    onClick={() => onRemoveCustomCategory('income', c)}
+                    className="text-gray-500 hover:text-red-400 transition-colors p-0.5"
+                    aria-label={`Remove ${c}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500">No custom income categories.</p>
+          )}
+          <div className="flex gap-2 pt-1">
+            <Input
+              value={newIncomeCat}
+              onChange={(e) => setNewIncomeCat(e.target.value)}
+              placeholder="New income category"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddIncomeCat(); } }}
+            />
+            <Button onClick={handleAddIncomeCat} variant="outline" className="gap-1.5 shrink-0">
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Notifications */}
+      <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-4">
+        <div className="flex items-center gap-2">
+          <Bell className="h-5 w-5 text-primary-400" />
+          <h2 className="text-lg font-semibold text-white">Notifications</h2>
+        </div>
+        <p className="text-sm text-gray-400">
+          Get a browser notification when planned expenses are coming up.
+        </p>
+
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-sm">
+            <span className="text-gray-400">Permission: </span>
+            <span className={
+              notifPermission === 'granted' ? 'text-green-400'
+                : notifPermission === 'denied' ? 'text-red-400'
+                : 'text-gray-300'
+            }>
+              {notifPermission === 'unsupported' ? 'Not supported in this browser' : notifPermission}
+            </span>
+          </div>
+          {notifPermission !== 'granted' && notifPermission !== 'unsupported' && (
+            <Button onClick={handleEnableReminders} variant="outline" className="gap-2">
+              <Bell className="h-4 w-4" />
+              Enable reminders
+            </Button>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label className="block text-sm font-medium text-gray-300">Days before due</Label>
+          <select
+            value={reminderDays}
+            onChange={(e) => setReminderDays(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+          >
+            <option value="1">1 day</option>
+            <option value="2">2 days</option>
+            <option value="3">3 days</option>
+            <option value="7">7 days</option>
+          </select>
+        </div>
       </section>
 
       {/* Bank Import */}

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Upload,
   FileSpreadsheet,
@@ -7,8 +7,11 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowLeft,
+  Eye,
+  EyeOff,
+  Loader2,
 } from 'lucide-react';
-import type { AppData, Transaction } from '../types';
+import type { AppData, Currency, Transaction } from '../types';
 import {
   EXPENSE_CATEGORIES,
   INCOME_CATEGORIES,
@@ -26,6 +29,12 @@ import {
   type ParsedBankTransaction,
   type ColumnMapping,
 } from '../utils/bankImport';
+import {
+  fetchMonobankClientInfo,
+  fetchMonobankStatement,
+  type MonobankAccount,
+  type MonobankTransaction,
+} from '../utils/monobank';
 import { useI18n } from '../i18n';
 
 interface BankImportProps {
@@ -45,6 +54,7 @@ const SELECT_CLASS =
 
 export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }: BankImportProps) {
   const { t, tc, formatCurrency } = useI18n();
+  const [tab, setTab] = useState<'file' | 'monobank'>('file');
   const [step, setStep] = useState<Step>(1);
   const [dragging, setDragging] = useState(false);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
@@ -330,11 +340,39 @@ export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }:
         </div>
       )}
 
+      {/* Tabs */}
+      <div className="flex border-b border-gray-800">
+        <button
+          onClick={() => setTab('file')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === 'file'
+              ? 'border-primary-500 text-primary-400'
+              : 'border-transparent text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          File Import
+        </button>
+        <button
+          onClick={() => setTab('monobank')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            tab === 'monobank'
+              ? 'border-primary-500 text-primary-400'
+              : 'border-transparent text-gray-400 hover:text-gray-200'
+          }`}
+        >
+          Monobank API
+        </button>
+      </div>
+
+      {tab === 'monobank' && (
+        <MonobankPanel data={data} onAdd={onAdd} onUpdateSettings={onUpdateSettings} />
+      )}
+
       {/* Step indicator */}
-      <StepIndicator current={step} />
+      {tab === 'file' && <StepIndicator current={step} />}
 
       {/* Step 1 - Upload */}
-      {step === 1 && (
+      {tab === 'file' && step === 1 && (
         <section className="bg-gray-900 rounded-xl p-4 sm:p-8 border border-gray-800">
           <div
             onDragOver={handleDragOver}
@@ -378,7 +416,7 @@ export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }:
       )}
 
       {/* Step 2 - Column Mapping */}
-      {step === 2 && parseResult && (
+      {tab === 'file' && step === 2 && parseResult && (
         <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-5 sm:space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -495,7 +533,7 @@ export default function BankImport({ data, onAdd, onAddRule, onUpdateSettings }:
       )}
 
       {/* Step 3 - Review & Import */}
-      {step === 3 && parseResult && (
+      {tab === 'file' && step === 3 && parseResult && (
         <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-4 sm:space-y-5">
           {/* Header row */}
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -799,6 +837,329 @@ function MappingSelect({
       </select>
     </div>
   );
+}
+
+// ---- Monobank panel ----
+
+interface MonobankPanelProps {
+  data: AppData;
+  onAdd: (tx: Omit<Transaction, 'id'>) => void;
+  onUpdateSettings: (s: Partial<import('../types').UserSettings>) => void;
+}
+
+function MonobankPanel({ data, onAdd, onUpdateSettings }: MonobankPanelProps) {
+  const { formatCurrency } = useI18n();
+  const [tokenInput, setTokenInput] = useState(data.settings.monobankToken ?? '');
+  const [showToken, setShowToken] = useState(false);
+  const [accounts, setAccounts] = useState<MonobankAccount[]>([]);
+  const [accountId, setAccountId] = useState<string>('');
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
+  const [loadingTx, setLoadingTx] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [transactions, setTransactions] = useState<MonobankTransaction[] | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [categoryOverrides, setCategoryOverrides] = useState<Record<number, string>>({});
+  const [importedCount, setImportedCount] = useState<number | null>(null);
+
+  // Date range — default last 30 days
+  const today = new Date();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+  const [fromDate, setFromDate] = useState(thirtyDaysAgo.toISOString().slice(0, 10));
+  const [toDate, setToDate] = useState(today.toISOString().slice(0, 10));
+
+  const savedToken = data.settings.monobankToken;
+
+  // Load accounts when saved token exists
+  useEffect(() => {
+    if (!savedToken) return;
+    setLoadingAccounts(true);
+    setError(null);
+    fetchMonobankClientInfo(savedToken)
+      .then((info) => {
+        setAccounts(info.accounts);
+        if (info.accounts.length > 0 && !accountId) setAccountId(info.accounts[0].id);
+      })
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoadingAccounts(false));
+  }, [savedToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleSaveToken() {
+    setError(null);
+    onUpdateSettings({ monobankToken: tokenInput.trim() });
+  }
+
+  async function handleFetchTransactions() {
+    if (!savedToken || !accountId) return;
+    setLoadingTx(true);
+    setError(null);
+    setTransactions(null);
+    try {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+      const txs = await fetchMonobankStatement(savedToken, accountId, from, to);
+      setTransactions(txs);
+      const initSel = new Set<number>();
+      const initCats: Record<number, string> = {};
+      txs.forEach((tx, i) => {
+        initSel.add(i);
+        const isIncome = tx.amount > 0;
+        const cat = detectCategoryForDescription(tx.description || tx.counterName || '');
+        initCats[i] = isIncome && cat === 'Other' ? 'Other Income' : cat;
+      });
+      setSelected(initSel);
+      setCategoryOverrides(initCats);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoadingTx(false);
+    }
+  }
+
+  function toggleSelect(i: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
+  function handleImport() {
+    if (!transactions) return;
+    const existingKeys = new Set(
+      data.transactions.map((tx) => `${tx.date}|${tx.amount}|${tx.description}`),
+    );
+    let count = 0;
+    transactions.forEach((mtx, i) => {
+      if (!selected.has(i)) return;
+      const amount = Math.abs(mtx.amount) / 100;
+      const type: 'income' | 'expense' = mtx.amount > 0 ? 'income' : 'expense';
+      const date = new Date(mtx.time * 1000).toISOString().slice(0, 10);
+      const description = mtx.description || mtx.counterName || '';
+      const key = `${date}|${amount}|${description}`;
+      if (existingKeys.has(key)) return; // dedupe
+      const currency = monobankCurrency(mtx.currencyCode);
+      const newTx: Omit<Transaction, 'id'> = {
+        type,
+        amount,
+        currency,
+        category: (categoryOverrides[i] ?? 'Other') as Transaction['category'],
+        description: description.slice(0, 200),
+        date,
+        source: 'Monobank',
+        counterparty: mtx.counterName,
+        notes: mtx.comment,
+      };
+      onAdd(newTx);
+      count++;
+    });
+    setImportedCount(count);
+    setTransactions(null);
+    setSelected(new Set());
+    setCategoryOverrides({});
+  }
+
+  if (!savedToken) {
+    return (
+      <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Connect Monobank</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Get your personal token from the Monobank app: Settings → Other → API.
+            The token stays on your device.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type={showToken ? 'text' : 'password'}
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              placeholder="Personal token"
+              className={INPUT_CLASS + ' pr-10'}
+            />
+            <button
+              type="button"
+              onClick={() => setShowToken((s) => !s)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              aria-label="Toggle token visibility"
+            >
+              {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <button
+            onClick={handleSaveToken}
+            disabled={!tokenInput.trim()}
+            className="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            Save token
+          </button>
+        </div>
+        {error && (
+          <p className="text-sm text-red-400 flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" /> {error}
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="bg-gray-900 rounded-xl p-4 sm:p-6 border border-gray-800 space-y-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Monobank API</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Token saved. Pick an account and date range.</p>
+        </div>
+        <button
+          onClick={() => onUpdateSettings({ monobankToken: undefined })}
+          className="text-xs text-gray-400 hover:text-red-400 transition-colors"
+        >
+          Forget token
+        </button>
+      </div>
+
+      {importedCount !== null && (
+        <div className="bg-green-900/40 border border-green-700 rounded-lg p-3 text-sm text-green-300">
+          Imported {importedCount} transaction{importedCount === 1 ? '' : 's'}.
+        </div>
+      )}
+
+      {loadingAccounts ? (
+        <div className="flex items-center gap-2 text-sm text-gray-400">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading accounts...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Account</label>
+            <select
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              className={INPUT_CLASS}
+            >
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.maskedPan?.[0] || a.iban || a.id.slice(0, 8)} —{' '}
+                  {(a.balance / 100).toFixed(2)} {monobankCurrency(a.currencyCode)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">From</label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className={INPUT_CLASS}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">To</label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className={INPUT_CLASS}
+            />
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={handleFetchTransactions}
+        disabled={!accountId || loadingTx}
+        className="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+      >
+        {loadingTx ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+        Fetch transactions
+      </button>
+
+      {error && (
+        <p className="text-sm text-red-400 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" /> {error}
+        </p>
+      )}
+
+      {transactions && transactions.length === 0 && (
+        <p className="text-sm text-gray-500">No transactions in this date range.</p>
+      )}
+
+      {transactions && transactions.length > 0 && (
+        <>
+          <div className="text-xs text-gray-400">
+            {selected.size} of {transactions.length} selected
+          </div>
+          <div className="max-h-[500px] overflow-y-auto rounded-lg border border-gray-800 divide-y divide-gray-800">
+            {transactions.map((tx, i) => {
+              const isChecked = selected.has(i);
+              const isIncome = tx.amount > 0;
+              const amount = Math.abs(tx.amount) / 100;
+              const currency = monobankCurrency(tx.currencyCode);
+              const date = new Date(tx.time * 1000).toISOString().slice(0, 10);
+              const desc = tx.description || tx.counterName || '';
+              const currentCategory = categoryOverrides[i] ?? 'Other';
+              const catColor = CATEGORY_COLORS[currentCategory] ?? '#64748b';
+              const allCategories = isIncome ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+              return (
+                <div key={tx.id} className={`px-3 py-2.5 ${isChecked ? '' : 'opacity-50'}`}>
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleSelect(i)}
+                      className="h-4 w-4 rounded border-gray-600 bg-gray-800 accent-primary-500 mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-200 truncate">{desc}</p>
+                      <p className="text-xs text-gray-500">{date}</p>
+                    </div>
+                    <span className={`text-sm font-semibold shrink-0 ${isIncome ? 'text-green-400' : 'text-red-400'}`}>
+                      {isIncome ? '+' : '-'}{formatCurrency(amount, currency as Currency)}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 ml-6">
+                    <select
+                      value={currentCategory}
+                      onChange={(e) =>
+                        setCategoryOverrides((prev) => ({ ...prev, [i]: e.target.value }))
+                      }
+                      className={SELECT_CLASS}
+                      style={{ borderColor: catColor + '60' }}
+                    >
+                      {allCategories.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={handleImport}
+            disabled={selected.size === 0}
+            className="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 text-white font-medium px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          >
+            <Check className="h-4 w-4" />
+            Import selected ({selected.size})
+          </button>
+        </>
+      )}
+    </section>
+  );
+}
+
+function monobankCurrency(code: number): Currency {
+  switch (code) {
+    case 980: return 'UAH';
+    case 840: return 'USD';
+    case 985: return 'PLN';
+    default: return 'UAH';
+  }
 }
 
 // ---- Helper: remap transactions from raw rows using a custom ColumnMapping ----

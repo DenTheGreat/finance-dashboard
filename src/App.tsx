@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
@@ -7,7 +7,10 @@ import Debts from './pages/Debts';
 import Savings from './pages/Savings';
 import Settings from './pages/Settings';
 import Planning from './pages/Planning';
-import type { Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense, PlannedIncome } from './types';
+import Budget from './pages/Budget';
+import BankImport from './pages/BankImport';
+import Onboarding from './components/Onboarding';
+import type { Transaction, Debt, SavingsGoal, UserSettings, PlannedExpense, PlannedIncome, ExpenseCategory } from './types';
 import { I18nContext, createI18nValue } from './i18n';
 import type { Locale } from './i18n';
 import {
@@ -37,13 +40,18 @@ import {
   deleteTransactions,
   updateTransactionsCategory,
   batchUpdateTransactionRates,
+  setCategoryBudget,
+  addCustomCategory,
+  removeCustomCategory,
 } from './store';
+import { checkUpcomingReminders } from './utils/reminders';
 import { fetchAllRates, fetchHistoricalRatesForDate } from './utils/exchangeRate';
 import { generateSeedData } from './utils/seed';
 import ErrorBoundary from './components/ErrorBoundary';
 
 export default function App() {
   const [data, setData] = useState(loadData);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Fetch live exchange rates when auto mode is enabled
   const autoExchangeRate = data.settings.autoExchangeRate;
@@ -185,6 +193,18 @@ export default function App() {
     setData((prev) => updateSettings(prev, settings));
   }, []);
 
+  const handleSetBudget = useCallback((month: string, category: ExpenseCategory, amount: number) => {
+    setData((prev) => setCategoryBudget(prev, month, category, amount));
+  }, []);
+
+  const handleAddCustomCategory = useCallback((kind: 'income' | 'expense', name: string) => {
+    setData((prev) => addCustomCategory(prev, kind, name));
+  }, []);
+
+  const handleRemoveCustomCategory = useCallback((kind: 'income' | 'expense', name: string) => {
+    setData((prev) => removeCustomCategory(prev, kind, name));
+  }, []);
+
   const handleExport = useCallback(() => {
     const json = exportData(data);
     const blob = new Blob([json], { type: 'application/json' });
@@ -214,6 +234,31 @@ export default function App() {
     setData((prev) => updateSettings(prev, { locale: l }));
   }, []);
   const i18n = useMemo(() => createI18nValue(locale, setLocale), [locale, setLocale]);
+
+  // First-run onboarding check
+  useEffect(() => {
+    const done = localStorage.getItem('finance-onboarding-done');
+    if (done) return;
+    const isEmpty =
+      data.transactions.length === 0 &&
+      data.plannedExpenses.length === 0 &&
+      (data.plannedIncomes?.length ?? 0) === 0 &&
+      data.savingsGoals.length === 0 &&
+      data.debts.length === 0;
+    if (isEmpty) setShowOnboarding(true);
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reminders check (after a short delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const days = parseInt(localStorage.getItem('reminders-days-ahead') ?? '3', 10) || 3;
+      checkUpcomingReminders(data.plannedExpenses, data.plannedIncomes ?? [], days);
+    }, 2000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Apply dark/light class to document root
   useEffect(() => {
@@ -289,6 +334,21 @@ export default function App() {
             }
           />
           <Route
+            path="/budget"
+            element={<Budget data={data} onSetBudget={handleSetBudget} />}
+          />
+          <Route
+            path="/bank-import"
+            element={
+              <BankImport
+                data={data}
+                onAdd={handleAddTransaction}
+                onAddRule={handleAddCategoryRule}
+                onUpdateSettings={handleUpdateSettings}
+              />
+            }
+          />
+          <Route
             path="/settings"
             element={
               <Settings
@@ -301,13 +361,23 @@ export default function App() {
                 onDeduplicate={handleDeduplicateTransactions}
                 onAddTransaction={handleAddTransaction}
                 onAddRule={handleAddCategoryRule}
+                onAddCustomCategory={handleAddCustomCategory}
+                onRemoveCustomCategory={handleRemoveCustomCategory}
               />
             }
           />
         </Route>
       </Routes>
+      {showOnboarding && (
+        <OnboardingHost onClose={() => setShowOnboarding(false)} />
+      )}
     </BrowserRouter>
     </ErrorBoundary>
     </I18nContext.Provider>
   );
+}
+
+function OnboardingHost({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
+  return <Onboarding onClose={onClose} onNavigate={(path) => navigate(path)} />;
 }

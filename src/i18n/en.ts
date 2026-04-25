@@ -6,6 +6,7 @@ const en: Record<string, string> = {
   'nav.debts': 'Debts',
   'nav.savings': 'Savings',
   'nav.settings': 'Settings',
+  'nav.budget': 'Budget',
 
   // Layout
   'layout.appTitle': 'Finance Dashboard',

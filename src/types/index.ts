@@ -52,7 +52,7 @@ export interface Transaction {
   type: TransactionType;
   amount: number;
   currency: Currency;
-  category: IncomeCategory | ExpenseCategory;
+  category: string;
   description: string;
   date: string; // ISO date string YYYY-MM-DD
   exchangeRateAtTime?: number; // USD→PLN rate when this transaction occurred (legacy scalar)
@@ -93,6 +93,9 @@ export interface UserSettings {
   monthlyBudget?: number;
   locale?: 'en' | 'uk' | 'ru';
   theme?: 'dark' | 'light';
+  monobankToken?: string;
+  customExpenseCategories?: string[];
+  customIncomeCategories?: string[];
 }
 
 export type Recurrence = 'once' | 'monthly' | 'yearly';

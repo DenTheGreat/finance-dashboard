@@ -11,6 +11,8 @@ import {
   Sun,
   Moon,
   Calendar,
+  Target,
+  Upload,
 } from 'lucide-react'
 import type { Currency, UserSettings } from '../types'
 import { useI18n } from '../i18n'
@@ -22,6 +24,8 @@ const navLinks = [
   { to: '/debts', labelKey: 'nav.debts', icon: CreditCard },
   { to: '/savings', labelKey: 'nav.savings', icon: PiggyBank },
   { to: '/planning', labelKey: 'planning.title', icon: Calendar },
+  { to: '/budget', labelKey: 'nav.budget', icon: Target },
+  { to: '/bank-import', labelKey: 'nav.bankImport', icon: Upload },
   { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ]
 
