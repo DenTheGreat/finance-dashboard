@@ -88,14 +88,16 @@ export default function Budget({ data, onSetBudget }: BudgetProps) {
         </div>
         <div className="flex items-center gap-2">
           <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
-          {selectedMonth !== format(new Date(), 'yyyy-MM') && (
-            <button
-              onClick={() => setSelectedMonth(format(new Date(), 'yyyy-MM'))}
-              className="px-2 py-1 text-xs text-primary-400 hover:text-primary-300 border border-primary-500/30 rounded transition-colors"
-            >
-              Today
-            </button>
-          )}
+          <div className="w-14 flex justify-start">
+            {selectedMonth !== format(new Date(), 'yyyy-MM') && (
+              <button
+                onClick={() => setSelectedMonth(format(new Date(), 'yyyy-MM'))}
+                className="px-2 py-1 text-xs text-primary-400 hover:text-primary-300 border border-primary-500/30 rounded transition-colors"
+              >
+                Today
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

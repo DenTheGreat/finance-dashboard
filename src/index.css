@@ -248,3 +248,54 @@ body {
   background-color: #ffffff;
   color: #1e293b;
 }
+
+/* Light theme: text-white → dark (invisible on white card backgrounds) */
+:root:not(.dark) .text-white {
+  color: #1e293b;
+}
+
+/* Restore white text when the element itself has a colored background */
+:root:not(.dark) .bg-primary-600.text-white,
+:root:not(.dark) .bg-primary-500.text-white,
+:root:not(.dark) .bg-primary-700.text-white,
+:root:not(.dark) .bg-emerald-600.text-white,
+:root:not(.dark) .bg-emerald-500.text-white,
+:root:not(.dark) .bg-red-600.text-white,
+:root:not(.dark) .bg-red-500.text-white,
+:root:not(.dark) .bg-yellow-500.text-white,
+:root:not(.dark) .bg-blue-500.text-white,
+:root:not(.dark) .bg-orange-500.text-white {
+  color: white;
+}
+
+/* Restore white text when inside a colored background container */
+:root:not(.dark) .bg-primary-600 .text-white,
+:root:not(.dark) .bg-primary-500 .text-white,
+:root:not(.dark) .bg-primary-700 .text-white,
+:root:not(.dark) .bg-emerald-600 .text-white,
+:root:not(.dark) .bg-emerald-500 .text-white,
+:root:not(.dark) .bg-red-600 .text-white,
+:root:not(.dark) .bg-red-500 .text-white {
+  color: white;
+}
+
+/* Light theme: sidebar/nav border visibility */
+:root:not(.dark) .border-gray-800 {
+  border-color: #e2e8f0;
+}
+
+/* Light theme: ring/focus colors on inputs */
+:root:not(.dark) .ring-primary-500\/30 {
+  --tw-ring-color: rgb(99 102 241 / 0.2);
+}
+
+/* Light theme: placeholder text */
+:root:not(.dark) .placeholder\:text-gray-500::placeholder {
+  color: #94a3b8;
+}
+
+/* Light theme: color-scheme for date inputs */
+:root:not(.dark) [color-scheme="dark"],
+:root:not(.dark) .\[color-scheme\:dark\] {
+  color-scheme: light;
+}
